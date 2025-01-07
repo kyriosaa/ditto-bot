@@ -1,0 +1,141 @@
+2025-01-07 22:45:44,215 - INFO - Logged in as PTCG News#6597
+2025-01-07 22:45:44,725 - INFO - Slash commands synced.
+2025-01-07 22:45:44,725 - INFO - Starting background task to check for new articles...
+2025-01-07 22:45:44,727 - INFO - Checking for new articles...
+2025-01-07 22:45:44,727 - ERROR - Channel not found. Check your CHANNEL_ID.
+2025-01-07 22:51:25,734 - INFO - Logged in as PTCG News#6597
+2025-01-07 22:51:26,348 - INFO - Slash commands synced.
+2025-01-07 22:51:26,348 - INFO - Starting background task to check for new articles...
+2025-01-07 22:51:26,349 - INFO - Checking for new articles...
+2025-01-07 22:51:26,349 - ERROR - Channel not found. Check your CHANNEL_ID.
+2025-01-07 22:51:52,325 - INFO - Slash command /ptcgnews triggered.
+2025-01-07 22:51:53,175 - ERROR - Channel not found during slash command.
+2025-01-07 22:54:30,505 - INFO - Slash command /ptcgnews triggered.
+2025-01-07 22:54:31,361 - ERROR - Channel not found during slash command.
+2025-01-07 22:56:54,225 - INFO - Slash command /ptcgnews triggered.
+2025-01-07 22:56:56,765 - INFO - Fetched 0 articles from https://www.pokebeach.com/.
+2025-01-07 22:56:57,180 - INFO - No new articles found via slash command.
+2025-01-07 23:00:08,676 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:00:09,262 - INFO - Slash commands synced.
+2025-01-07 23:00:09,262 - INFO - Starting background task to check for new articles...
+2025-01-07 23:00:09,263 - INFO - Checking for new articles...
+2025-01-07 23:00:11,359 - INFO - Fetched 0 articles from https://www.pokebeach.com/.
+2025-01-07 23:00:11,360 - INFO - No new articles found.
+2025-01-07 23:01:44,275 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:01:44,664 - INFO - Slash commands synced.
+2025-01-07 23:01:44,664 - INFO - Starting background task to check for new articles...
+2025-01-07 23:01:44,664 - INFO - Checking for new articles...
+2025-01-07 23:01:46,655 - INFO - Fetched 0 articles from https://www.pokebeach.com/.
+2025-01-07 23:01:46,656 - INFO - No new articles found.
+2025-01-07 23:02:50,276 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:02:50,936 - INFO - Slash commands synced.
+2025-01-07 23:02:50,936 - INFO - Starting background task to check for new articles...
+2025-01-07 23:02:50,936 - INFO - Checking for new articles...
+2025-01-07 23:02:52,862 - INFO - Fetched 0 articles from https://www.pokebeach.com/.
+2025-01-07 23:02:52,862 - INFO - No new articles found.
+2025-01-07 23:04:10,854 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:04:11,344 - INFO - Slash commands synced.
+2025-01-07 23:04:11,344 - INFO - Starting background task to check for new articles...
+2025-01-07 23:04:11,344 - INFO - Checking for new articles...
+2025-01-07 23:04:13,278 - INFO - Fetched 0 articles from https://www.pokebeach.com/.
+2025-01-07 23:04:13,278 - INFO - No new articles found.
+2025-01-07 23:04:50,129 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:04:50,721 - INFO - Slash commands synced.
+2025-01-07 23:04:50,721 - INFO - Starting background task to check for new articles...
+2025-01-07 23:04:50,721 - INFO - Checking for new articles...
+2025-01-07 23:04:52,622 - INFO - Fetched 0 articles from https://www.pokebeach.com/.
+2025-01-07 23:04:52,622 - INFO - No new articles found.
+2025-01-07 23:09:02,566 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:09:03,014 - INFO - Slash commands synced.
+2025-01-07 23:09:03,014 - INFO - Starting background task to check for new articles...
+2025-01-07 23:09:03,014 - INFO - Checking for new articles...
+2025-01-07 23:09:04,919 - INFO - Fetched 16 articles from https://www.pokebeach.com/.
+2025-01-07 23:09:04,919 - INFO - Found 16 new articles. Posting now...
+2025-01-07 23:09:07,196 - INFO - Posted article: Metagross from Battle Partners! - https://www.pokebeach.com/2025/01/metagross-from-battle-partners
+2025-01-07 23:09:10,466 - INFO - Posted article: Raging Techs for San Antonio: Bolt is Still Busted - https://www.pokebeach.com/2025/01/raging-techs-for-san-antonio-bolt-is-still-busted
+2025-01-07 23:09:12,324 - INFO - Posted article: PokeBeach Podcast: Troubling “Prismatic Evolutions” Release, Stock Severely Cut to Local Pokemon Stores - https://www.pokebeach.com/2025/01/pokebeach-podcast-troubling-prismatic-evolutions-release-stock-severely-cut-to-local-pokemon-stores
+2025-01-07 23:09:14,516 - INFO - Posted article: Dudunsparce ex from Battle Partners! - https://www.pokebeach.com/2025/01/dudunsparce-ex-from-battle-partners
+2025-01-07 23:09:16,570 - INFO - Posted article: “Prismatic Evolutions” Demand Higher than Supply, Allocations Severely Cut to Local Stores - https://www.pokebeach.com/2025/01/prismatic-evolutions-allocations-severely-cut-to-local-stores-demand-higher-than-supply
+2025-01-07 23:09:18,912 - INFO - Posted article: Banette from Battle Partners! - https://www.pokebeach.com/2025/01/banette-from-battle-partners
+2025-01-07 23:09:22,020 - INFO - Posted article: Iron Thorns ex / Dragapult ex Poses Major Challenges to Top Decks - https://www.pokebeach.com/2025/01/iron-thorns-ex-dragapult-ex-poses-major-challenges-to-top-decks
+2025-01-07 23:09:25,706 - INFO - Posted article: Swinging the Sphene — Refining Regidrago VSTAR - https://www.pokebeach.com/2025/01/swinging-the-sphene-refining-regidrago-vstar
+2025-01-07 23:09:28,651 - INFO - Posted article: “Prismatic Evolutions” Set Guide: Full Card List, Secret Rares, Cut Cards, Products, and More! - https://www.pokebeach.com/2025/01/prismatic-evolutions-set-guide-full-card-list-secret-rares-cut-cards-products-and-more
+2025-01-07 23:09:30,405 - INFO - Posted article: Lycanroc and Spike Energy from “Battle Partners” Revealed! - https://www.pokebeach.com/2025/01/lycanroc-and-spike-energy-from-battle-partners-revealed
+2025-01-07 23:09:31,990 - INFO - Posted article: More “Prismatic Evolutions” English Cards Revealed! - https://www.pokebeach.com/2024/12/more-prismatic-evolutions-english-cards-revealed
+2025-01-07 23:09:34,394 - INFO - Posted article: Pokemon Center Offering Free Sitting Cuties Plush for Subscribing to Marketing E-mails - https://www.pokebeach.com/2024/12/pokemon-center-offering-free-sitting-cuties-plush-for-subscribing-to-marketing-e-mails
+2025-01-07 23:09:39,191 - INFO - Posted article: Better Together – A Guide for Regigigas / Pikachu ex - https://www.pokebeach.com/2024/12/better-together
+2025-01-07 23:09:40,832 - INFO - Posted article: PokeBeach Podcast: Is “Battle Partners” A Little Disappointing? - https://www.pokebeach.com/2024/12/pokebeach-podcast-is-battle-partners-a-little-disappointing
+2025-01-07 23:09:43,001 - INFO - Posted article: Hop’s Zacian ex, Mamoswine ex, and More from “Battle Partners” Revealed! - https://www.pokebeach.com/2024/12/hops-zacian-ex-mamoswine-ex-and-more-from-battle-partners-revealed
+2025-01-07 23:09:44,646 - INFO - Posted article: Three TCG Collections Releasing in 2025 with New Unique Items, Including Lenticular Card! - https://www.pokebeach.com/2024/12/three-tcg-collections-releasing-in-2025-with-new-unique-items-including-lenticular-card
+2025-01-07 23:15:06,279 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:15:06,694 - INFO - Slash commands synced.
+2025-01-07 23:15:06,694 - INFO - Starting background task to check for new articles...
+2025-01-07 23:15:06,694 - INFO - Checking for new articles...
+2025-01-07 23:15:08,649 - INFO - Fetched 16 articles from https://www.pokebeach.com/.
+2025-01-07 23:15:08,649 - INFO - No new articles found.
+2025-01-07 23:15:36,064 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:16:06,731 - INFO - Slash commands synced.
+2025-01-07 23:16:06,731 - INFO - Starting background task to check for new articles...
+2025-01-07 23:16:06,732 - INFO - Checking for new articles...
+2025-01-07 23:16:08,635 - INFO - Fetched 16 articles from https://www.pokebeach.com/.
+2025-01-07 23:16:08,636 - INFO - Found 16 new articles. Posting now...
+2025-01-07 23:16:09,646 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/metagross-from-battle-partners.
+2025-01-07 23:16:10,213 - INFO - Posted article: Metagross from Battle Partners! - https://www.pokebeach.com/2025/01/metagross-from-battle-partners
+2025-01-07 23:16:13,028 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/raging-techs-for-san-antonio-bolt-is-still-busted.
+2025-01-07 23:16:13,527 - INFO - Posted article: Raging Techs for San Antonio: Bolt is Still Busted - https://www.pokebeach.com/2025/01/raging-techs-for-san-antonio-bolt-is-still-busted
+2025-01-07 23:16:14,755 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/pokebeach-podcast-troubling-prismatic-evolutions-release-stock-severely-cut-to-local-pokemon-stores.
+2025-01-07 23:16:15,117 - INFO - Posted article: PokeBeach Podcast: Troubling “Prismatic Evolutions” Release, Stock Severely Cut to Local Pokemon Stores - https://www.pokebeach.com/2025/01/pokebeach-podcast-troubling-prismatic-evolutions-release-stock-severely-cut-to-local-pokemon-stores
+2025-01-07 23:16:16,330 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/dudunsparce-ex-from-battle-partners.
+2025-01-07 23:16:16,778 - INFO - Posted article: Dudunsparce ex from Battle Partners! - https://www.pokebeach.com/2025/01/dudunsparce-ex-from-battle-partners
+2025-01-07 23:16:18,128 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/prismatic-evolutions-allocations-severely-cut-to-local-stores-demand-higher-than-supply.
+2025-01-07 23:16:18,502 - INFO - Posted article: “Prismatic Evolutions” Demand Higher than Supply, Allocations Severely Cut to Local Stores - https://www.pokebeach.com/2025/01/prismatic-evolutions-allocations-severely-cut-to-local-stores-demand-higher-than-supply
+2025-01-07 23:16:20,322 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/banette-from-battle-partners.
+2025-01-07 23:16:20,689 - INFO - Posted article: Banette from Battle Partners! - https://www.pokebeach.com/2025/01/banette-from-battle-partners
+2025-01-07 23:16:25,178 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/iron-thorns-ex-dragapult-ex-poses-major-challenges-to-top-decks.
+2025-01-07 23:16:25,616 - INFO - Posted article: Iron Thorns ex / Dragapult ex Poses Major Challenges to Top Decks - https://www.pokebeach.com/2025/01/iron-thorns-ex-dragapult-ex-poses-major-challenges-to-top-decks
+2025-01-07 23:16:28,222 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/swinging-the-sphene-refining-regidrago-vstar.
+2025-01-07 23:16:28,552 - INFO - Posted article: Swinging the Sphene — Refining Regidrago VSTAR - https://www.pokebeach.com/2025/01/swinging-the-sphene-refining-regidrago-vstar
+2025-01-07 23:16:30,956 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/prismatic-evolutions-set-guide-full-card-list-secret-rares-cut-cards-products-and-more.
+2025-01-07 23:16:31,342 - INFO - Posted article: “Prismatic Evolutions” Set Guide: Full Card List, Secret Rares, Cut Cards, Products, and More! - https://www.pokebeach.com/2025/01/prismatic-evolutions-set-guide-full-card-list-secret-rares-cut-cards-products-and-more
+2025-01-07 23:16:33,154 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2025/01/lycanroc-and-spike-energy-from-battle-partners-revealed.
+2025-01-07 23:16:33,538 - INFO - Posted article: Lycanroc and Spike Energy from “Battle Partners” Revealed! - https://www.pokebeach.com/2025/01/lycanroc-and-spike-energy-from-battle-partners-revealed
+2025-01-07 23:16:34,802 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2024/12/more-prismatic-evolutions-english-cards-revealed.
+2025-01-07 23:16:35,166 - INFO - Posted article: More “Prismatic Evolutions” English Cards Revealed! - https://www.pokebeach.com/2024/12/more-prismatic-evolutions-english-cards-revealed
+2025-01-07 23:16:36,417 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2024/12/pokemon-center-offering-free-sitting-cuties-plush-for-subscribing-to-marketing-e-mails.
+2025-01-07 23:16:36,770 - INFO - Posted article: Pokemon Center Offering Free Sitting Cuties Plush for Subscribing to Marketing E-mails - https://www.pokebeach.com/2024/12/pokemon-center-offering-free-sitting-cuties-plush-for-subscribing-to-marketing-e-mails
+2025-01-07 23:16:39,793 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2024/12/better-together.
+2025-01-07 23:16:40,155 - INFO - Posted article: Better Together – A Guide for Regigigas / Pikachu ex - https://www.pokebeach.com/2024/12/better-together
+2025-01-07 23:16:41,463 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2024/12/pokebeach-podcast-is-battle-partners-a-little-disappointing.
+2025-01-07 23:16:41,859 - INFO - Posted article: PokeBeach Podcast: Is “Battle Partners” A Little Disappointing? - https://www.pokebeach.com/2024/12/pokebeach-podcast-is-battle-partners-a-little-disappointing
+2025-01-07 23:16:43,874 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2024/12/hops-zacian-ex-mamoswine-ex-and-more-from-battle-partners-revealed.
+2025-01-07 23:16:44,247 - INFO - Posted article: Hop’s Zacian ex, Mamoswine ex, and More from “Battle Partners” Revealed! - https://www.pokebeach.com/2024/12/hops-zacian-ex-mamoswine-ex-and-more-from-battle-partners-revealed
+2025-01-07 23:16:45,645 - WARNING - No <p> tag found in the article https://www.pokebeach.com/2024/12/three-tcg-collections-releasing-in-2025-with-new-unique-items-including-lenticular-card.
+2025-01-07 23:16:46,024 - INFO - Posted article: Three TCG Collections Releasing in 2025 with New Unique Items, Including Lenticular Card! - https://www.pokebeach.com/2024/12/three-tcg-collections-releasing-in-2025-with-new-unique-items-including-lenticular-card
+2025-01-07 23:18:19,069 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:18:19,465 - INFO - Slash commands synced.
+2025-01-07 23:18:19,465 - INFO - Starting background task to check for new articles...
+2025-01-07 23:18:19,465 - INFO - Checking for new articles...
+2025-01-07 23:18:21,486 - INFO - Fetched 16 articles from https://www.pokebeach.com/.
+2025-01-07 23:18:21,486 - INFO - No new articles found.
+2025-01-07 23:18:32,144 - INFO - Logged in as PTCG News#6597
+2025-01-07 23:19:19,487 - INFO - Slash commands synced.
+2025-01-07 23:19:19,487 - INFO - Starting background task to check for new articles...
+2025-01-07 23:19:19,487 - INFO - Checking for new articles...
+2025-01-07 23:19:20,891 - INFO - Fetched 16 articles from https://www.pokebeach.com/.
+2025-01-07 23:19:20,892 - INFO - Found 16 new articles. Posting now...
+2025-01-07 23:19:22,647 - INFO - Posted article: Metagross from Battle Partners! - https://www.pokebeach.com/2025/01/metagross-from-battle-partners
+2025-01-07 23:19:25,662 - INFO - Posted article: Raging Techs for San Antonio: Bolt is Still Busted - https://www.pokebeach.com/2025/01/raging-techs-for-san-antonio-bolt-is-still-busted
+2025-01-07 23:19:27,608 - INFO - Posted article: PokeBeach Podcast: Troubling “Prismatic Evolutions” Release, Stock Severely Cut to Local Pokemon Stores - https://www.pokebeach.com/2025/01/pokebeach-podcast-troubling-prismatic-evolutions-release-stock-severely-cut-to-local-pokemon-stores
+2025-01-07 23:19:30,072 - INFO - Posted article: Dudunsparce ex from Battle Partners! - https://www.pokebeach.com/2025/01/dudunsparce-ex-from-battle-partners
+2025-01-07 23:19:32,476 - INFO - Posted article: “Prismatic Evolutions” Demand Higher than Supply, Allocations Severely Cut to Local Stores - https://www.pokebeach.com/2025/01/prismatic-evolutions-allocations-severely-cut-to-local-stores-demand-higher-than-supply
+2025-01-07 23:19:33,842 - INFO - Posted article: Banette from Battle Partners! - https://www.pokebeach.com/2025/01/banette-from-battle-partners
+2025-01-07 23:19:37,602 - INFO - Posted article: Iron Thorns ex / Dragapult ex Poses Major Challenges to Top Decks - https://www.pokebeach.com/2025/01/iron-thorns-ex-dragapult-ex-poses-major-challenges-to-top-decks
+2025-01-07 23:19:40,585 - INFO - Posted article: Swinging the Sphene — Refining Regidrago VSTAR - https://www.pokebeach.com/2025/01/swinging-the-sphene-refining-regidrago-vstar
+2025-01-07 23:19:43,484 - INFO - Posted article: “Prismatic Evolutions” Set Guide: Full Card List, Secret Rares, Cut Cards, Products, and More! - https://www.pokebeach.com/2025/01/prismatic-evolutions-set-guide-full-card-list-secret-rares-cut-cards-products-and-more
+2025-01-07 23:19:45,139 - INFO - Posted article: Lycanroc and Spike Energy from “Battle Partners” Revealed! - https://www.pokebeach.com/2025/01/lycanroc-and-spike-energy-from-battle-partners-revealed
+2025-01-07 23:19:46,841 - INFO - Posted article: More “Prismatic Evolutions” English Cards Revealed! - https://www.pokebeach.com/2024/12/more-prismatic-evolutions-english-cards-revealed
+2025-01-07 23:19:49,178 - INFO - Posted article: Pokemon Center Offering Free Sitting Cuties Plush for Subscribing to Marketing E-mails - https://www.pokebeach.com/2024/12/pokemon-center-offering-free-sitting-cuties-plush-for-subscribing-to-marketing-e-mails
+2025-01-07 23:19:52,964 - INFO - Posted article: Better Together – A Guide for Regigigas / Pikachu ex - https://www.pokebeach.com/2024/12/better-together
+2025-01-07 23:19:55,249 - INFO - Posted article: PokeBeach Podcast: Is “Battle Partners” A Little Disappointing? - https://www.pokebeach.com/2024/12/pokebeach-podcast-is-battle-partners-a-little-disappointing
+2025-01-07 23:19:57,570 - INFO - Posted article: Hop’s Zacian ex, Mamoswine ex, and More from “Battle Partners” Revealed! - https://www.pokebeach.com/2024/12/hops-zacian-ex-mamoswine-ex-and-more-from-battle-partners-revealed
+2025-01-07 23:19:59,673 - INFO - Posted article: Three TCG Collections Releasing in 2025 with New Unique Items, Including Lenticular Card! - https://www.pokebeach.com/2024/12/three-tcg-collections-releasing-in-2025-with-new-unique-items-including-lenticular-card
