@@ -11,16 +11,14 @@ import json
 # --- Configuration ---
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")  # Bot token
-CHANNEL_ID = 1289080918610542592  # Discord channel ID
 URLS = [
     "https://www.pokebeach.com/"
 ]
 POSTED_ARTICLES_FILE = "posted_articles.json"
+SERVER_CHANNELS_FILE = "server_channels.json"
 
 # --- Logging Setup ---
 log_file = "bot_activity.log"
-
-# --- Create Logger ---
 logger = logging.getLogger("ptcg-news")
 logger.setLevel(logging.INFO)
 
@@ -49,6 +47,26 @@ def save_posted_articles():
     except Exception as e:
         logger.error(f"Error saving posted articles: {e}")
 
+# --- Track Server Channels ---
+server_channels = {}
+
+def load_server_channels():
+    if os.path.exists(SERVER_CHANNELS_FILE):
+        try:
+            with open(SERVER_CHANNELS_FILE, "r") as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            logger.error("Error decoding server channels file. Starting with an empty dictionary.")
+            return {}
+    return {}
+
+def save_server_channels(data):
+    try:
+        with open(SERVER_CHANNELS_FILE, "w") as file:
+            json.dump(data, file)
+    except Exception as e:
+        logger.error(f"Error saving server channels: {e}")
+
 # --- Discord Intents Setup ---
 intents = discord.Intents.default()
 intents.messages = True
@@ -66,7 +84,6 @@ def fetch_articles(url):
         return []
 
     soup = BeautifulSoup(response.content, 'html.parser')
-
     articles = soup.find_all('article', class_=lambda value: value and "block" in value)
     fetched_articles = []
 
@@ -94,22 +111,20 @@ def fetch_first_paragraph(article_url):
     except requests.RequestException as e:
         logger.error(f"Request error while fetching {article_url}: {e}")
         return ""
-
+    
     soup = BeautifulSoup(response.content, 'html.parser')
-    # Find the first <article> tag
     first_article = soup.find('article')
     if not first_article:
         logger.warning(f"No <article> tag found in the article {article_url}.")
         return "No content available."
 
-    # Traverse the nested <div> elements inside the first <article>
     nested_div = first_article.find('div')
     if nested_div:
-        nested_div = nested_div.find('div')  # Second level
+        nested_div = nested_div.find('div') 
         if nested_div:
-            nested_div = nested_div.find('div')  # Third level
+            nested_div = nested_div.find('div')  
             if nested_div:
-                first_paragraph = nested_div.find('p')  # Finally, find the <p> tag
+                first_paragraph = nested_div.find('p')  
                 if first_paragraph:
                     return first_paragraph.text.strip()
     
@@ -130,12 +145,12 @@ async def post_articles(channel, articles):
 # --- Background Task ---
 @tasks.loop(hours=1)
 async def check_and_post_articles():
-    try: 
-        logger.info("Checking for new articles...")
-        channel = bot.get_channel(CHANNEL_ID)
+    logger.info("Checking for new articles...")
+    for server_id, channel_id in server_channels.items():
+        channel = bot.get_channel(int(channel_id))
         if not channel:
-            logger.error("Channel not found. Check your CHANNEL_ID.")
-            return
+            logger.error(f"Channel {channel_id} not found for server {server_id}.")
+            continue
 
         new_articles = []
         for url in URLS:
@@ -147,24 +162,45 @@ async def check_and_post_articles():
                     posted_articles.add(link)
 
         if new_articles:
-            logger.info(f"Found {len(new_articles)} new articles. Posting now...")
+            logger.info(f"Found {len(new_articles)} new articles for server {server_id}.")
             await post_articles(channel, new_articles)
             save_posted_articles()
-        else:
-            logger.info("No new articles found.")
-    except Exception as e:
-        logger.exception(f"Error in scheduled task: {e}")
 
-# --- Slash Command ---
+# --- Slash Command: Set Channel ---
+@bot.tree.command(name="setchannel", description="Set the channel for article updates.")
+async def setchannel(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.manage_channels:
+        await interaction.response.send_message(
+            "You need the `Manage Channels` permission to use this command.", ephemeral=True
+        )
+        return
+
+    server_id = str(interaction.guild_id)
+    channel_id = str(interaction.channel_id)
+
+    server_channels[server_id] = channel_id
+    save_server_channels(server_channels)
+
+    await interaction.response.send_message(
+        f"Updates will now be posted in this channel: {interaction.channel.mention} ✅", ephemeral=True
+    )
+    logger.info(f"Set posting channel for server {server_id} to channel {channel_id}")
+
+# --- Slash Command: PTCG News ---
 @bot.tree.command(name="ptcgnews", description="Check for updates on the Pokemon Trading Card Game.")
 async def ptcgnews(interaction: discord.Interaction):
     logger.info("Slash command /ptcgnews triggered.")
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
-    channel = bot.get_channel(CHANNEL_ID)
+    server_id = str(interaction.guild_id)
+    channel_id = server_channels.get(server_id)
+    if not channel_id:
+        await interaction.followup.send("No channel has been set for this server. Use `/setchannel` first.", ephemeral=True)
+        return
+
+    channel = bot.get_channel(int(channel_id))
     if not channel:
-        await interaction.followup.send("Channel not found. Check your CHANNEL_ID.", ephemeral=True)
-        logger.error("Channel not found during slash command.")
+        await interaction.followup.send("The set channel could not be found. Please set it again using `/setchannel`.", ephemeral=True)
         return
 
     new_articles = []
@@ -180,25 +216,23 @@ async def ptcgnews(interaction: discord.Interaction):
         await post_articles(channel, new_articles)
         save_posted_articles()
         await interaction.followup.send(f"Posted {len(new_articles)} new article(s). ✅", ephemeral=True)
-        logger.info(f"Slash command posted {len(new_articles)} articles.")
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
-        logger.info("No new articles found via slash command.")
 
 # --- Bot Ready Event ---
 @bot.event
 async def on_ready():
-    logger.info(f"Logged in as {bot.user}")
-    global posted_articles
+    global posted_articles, server_channels
     posted_articles = load_posted_articles()
+    server_channels = load_server_channels()
+
     try:
         await bot.tree.sync()
         logger.info("Slash commands synced.")
     except Exception as e:
         logger.error(f"Error syncing slash commands: {e}")
 
-    logger.info("Starting background task to check for new articles...")
+    logger.info(f"Logged in as {bot.user}")
     check_and_post_articles.start()
 
-# --- Run the Bot ---
 bot.run(TOKEN)
