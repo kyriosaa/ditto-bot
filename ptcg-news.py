@@ -11,7 +11,7 @@ import json
 # --- Configuration ---
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")  # Bot token
-CHANNEL_ID = 1326224233612967996  # Discord channel ID
+CHANNEL_ID = 1289080918610542592  # Discord channel ID
 URLS = [
     "https://www.pokebeach.com/"
 ]
@@ -34,13 +34,20 @@ posted_articles = set()
 
 def load_posted_articles():
     if os.path.exists(POSTED_ARTICLES_FILE):
-        with open(POSTED_ARTICLES_FILE, "r") as file:
-            return set(json.load(file))
+        try:
+            with open(POSTED_ARTICLES_FILE, "r") as file:
+                return set(json.load(file))
+        except json.JSONDecodeError:
+            logger.error("Error decoding JSON file. Starting with an empty set.")
+            return set()
     return set()
 
 def save_posted_articles():
-    with open(POSTED_ARTICLES_FILE, "w") as file:
-        json.dump(list(posted_articles), file)
+    try:
+        with open(POSTED_ARTICLES_FILE, "w") as file:
+            json.dump(list(posted_articles), file)
+    except Exception as e:
+        logger.error(f"Error saving posted articles: {e}")
 
 # --- Discord Intents Setup ---
 intents = discord.Intents.default()
@@ -123,31 +130,34 @@ async def post_articles(channel, articles):
 # --- Background Task ---
 @tasks.loop(hours=1)
 async def check_and_post_articles():
-    logger.info("Checking for new articles...")
-    channel = bot.get_channel(CHANNEL_ID)
-    if not channel:
-        logger.error("Channel not found. Check your CHANNEL_ID.")
-        return
+    try: 
+        logger.info("Checking for new articles...")
+        channel = bot.get_channel(CHANNEL_ID)
+        if not channel:
+            logger.error("Channel not found. Check your CHANNEL_ID.")
+            return
 
-    new_articles = []
-    for url in URLS:
-        all_articles = fetch_articles(url)
+        new_articles = []
+        for url in URLS:
+            all_articles = fetch_articles(url)
 
-        for title, link, image_url in all_articles:
-            if link not in posted_articles:
-                new_articles.append((title, link, image_url))
-                posted_articles.add(link)
+            for title, link, image_url in all_articles:
+                if link not in posted_articles:
+                    new_articles.append((title, link, image_url))
+                    posted_articles.add(link)
 
-    if new_articles:
-        logger.info(f"Found {len(new_articles)} new articles. Posting now...")
-        await post_articles(channel, new_articles)
-        save_posted_articles()
-    else:
-        logger.info("No new articles found.")
+        if new_articles:
+            logger.info(f"Found {len(new_articles)} new articles. Posting now...")
+            await post_articles(channel, new_articles)
+            save_posted_articles()
+        else:
+            logger.info("No new articles found.")
+    except Exception as e:
+        logger.exception(f"Error in scheduled task: {e}")
 
 # --- Slash Command ---
 @bot.tree.command(name="ptcgnews", description="Check for updates on the Pokemon Trading Card Game.")
-async def pocketnews(interaction: discord.Interaction):
+async def ptcgnews(interaction: discord.Interaction):
     logger.info("Slash command /ptcgnews triggered.")
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
