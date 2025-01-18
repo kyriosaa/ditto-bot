@@ -91,6 +91,7 @@ def save_server_roles(data):
 # --- Discord Intents Setup ---
 intents = discord.Intents.default()
 intents.messages = True
+intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # --- Fetch Articles ---
@@ -227,20 +228,33 @@ async def setchannel(interaction: discord.Interaction):
 # --- Slash Command: Set Role ---
 @bot.tree.command(name="setrole", description="Set the role to ping for article updates.")
 async def setrole(interaction: discord.Interaction, role: discord.Role):
-    if not interaction.user.guild_permissions.manage_roles:
+    try:
+        logger.info(f"Setrole command triggered by {interaction.user} in server {interaction.guild_id} with role {role.id}")
+
+        # Check permissions
+        if not interaction.user.guild_permissions.manage_roles:
+            await interaction.response.send_message(
+                "You need the `Manage Roles` permission to use this command.", ephemeral=True
+            )
+            return
+
+        # Save the role
+        server_id = str(interaction.guild_id)
+        server_roles[server_id] = str(role.id)
+        save_server_roles(server_roles)
+
+        # Respond to the interaction
         await interaction.response.send_message(
-            "You need the `Manage Roles` permission to use this command.", ephemeral=True
+            f"The role {role.mention} will now be pinged for article updates. ✅", ephemeral=True
         )
-        return
 
-    server_id = str(interaction.guild_id)
-    server_roles[server_id] = str(role.id)
-    save_server_roles(server_roles)
+        logger.info(f"Set role for server {server_id} to role {role.id} ({role.name}).")
+    except Exception as e:
+        logger.error(f"Error in /setrole command: {e}")
+        await interaction.response.send_message(
+            "An error occurred while setting the role. Please try again later.", ephemeral=True
+        )
 
-    await interaction.response.send_message(
-        f"The role {role.mention} will now be pinged for article updates. ✅", ephemeral=True
-    )
-    logger.info(f"Set ping role for server {server_id} to role {role.id}")
 
 
 

@@ -170,3 +170,11 @@
 2025-01-16 21:53:27,854 - INFO - Fetched 16 articles from https://www.pokebeach.com/.
 2025-01-16 21:53:27,855 - INFO - No new articles found.
 2025-01-16 21:53:30,474 - INFO - Slash command /ptcgnews triggered.
+2025-01-18 23:31:31,229 - INFO - Slash commands synced.
+2025-01-18 23:31:31,229 - INFO - Logged in as PTCG News#6597
+2025-01-18 23:31:31,229 - INFO - Checking for new articles...
+2025-01-18 23:55:56,960 - INFO - Slash commands synced.
+2025-01-18 23:55:56,960 - INFO - Logged in as PTCG News#6597
+2025-01-18 23:55:56,960 - INFO - Checking for new articles...
+2025-01-18 23:56:06,904 - INFO - Setrole command triggered by kyriosaa in server 1318552879296151644 with role 1330217085283860571
+2025-01-18 23:56:07,274 - INFO - Set role for server 1318552879296151644 to role 1330217085283860571 (PokePress).
