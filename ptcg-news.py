@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 import json
 
-# --- config ---
+# --- bot config ---
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 URLS = [
@@ -18,17 +18,15 @@ POSTED_ARTICLES_FILE = "posted_articles.json"
 SERVER_CHANNELS_FILE = "server_channels.json"
 SERVER_ROLES_FILE = "server_roles.json"
 
-# --- Logging Setup ---
+# --- logging setup ---
 log_file = "bot_activity.log"
 logger = logging.getLogger("ptcg-news")
 logger.setLevel(logging.INFO)
-
-# --- Log File Config ---
 handler = RotatingFileHandler(log_file, maxBytes=100 * 1024 * 1024, backupCount=100)  # 100MB per file, 100 backups
 handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
 
-# --- Track Posted Articles ---
+# --- track posted articles ---
 posted_articles = set()
 
 def load_posted_articles():
@@ -48,7 +46,7 @@ def save_posted_articles():
     except Exception as e:
         logger.error(f"Error saving posted articles: {e}")
 
-# --- Track Server Channels ---
+# --- track server channels ---
 server_channels = {}
 
 def load_server_channels():
@@ -68,7 +66,7 @@ def save_server_channels(data):
     except Exception as e:
         logger.error(f"Error saving server channels: {e}")
 
-# --- Track Server Roles ---
+# --- track server roles ---
 server_roles = {}
 
 def load_server_roles():
@@ -88,13 +86,13 @@ def save_server_roles(data):
     except Exception as e:
         logger.error(f"Error saving server roles: {e}")
 
-# --- Discord Intents Setup ---
+# --- Discord intents setup ---
 intents = discord.Intents.default()
 intents.messages = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# --- Fetch Articles ---
+# --- fetch articles ---
 def fetch_articles(url):
     try:
         response = requests.get(url)
@@ -153,11 +151,12 @@ def fetch_first_paragraph(article_url):
     logger.warning(f"No <p> tag found in the article {article_url}.")
     return "No content available."
 
-# --- Post Articles ---
+# --- post articles ---
 async def post_articles(channel, articles):
     server_id = str(channel.guild.id)
     role_id = server_roles.get(server_id)
-    role_mention = f"<@&{role_id}>" if role_id else None  # Role mention if role ID is available
+
+    role_mention = f"<@&{role_id}>" if role_id else None
 
     for title, link, image_url in articles:
         first_paragraph = fetch_first_paragraph(link)
@@ -166,29 +165,29 @@ async def post_articles(channel, articles):
         embed = discord.Embed(title=title, url=link, description=description)
         embed.set_image(url=image_url)
 
-        # Ensure the role mention is sent above the embed
-        if role_mention:
-            await channel.send(content=role_mention, embed=embed)
-        else:
+        try:
+            if role_mention: 
+                await channel.send(content=role_mention)
+            
             await channel.send(embed=embed)
+            logger.info(f"Posted article: {title} - {link}")
+        except Exception as e:
+            logger.error(f"Failed to send message in channel {channel.id}: {e}")
 
-        logger.info(f"Posted article: {title} - {link}")
 
 
 
-# --- Background Task ---
+# --- background check ---
 @tasks.loop(hours=1)
 async def check_and_post_articles():
     logger.info("Checking for new articles...")
 
     for server_id, channel_id in server_channels.items():
-        # Fetch the channel object
         channel = bot.get_channel(int(channel_id))
         if not channel:
             logger.error(f"Channel {channel_id} not found for server {server_id}.")
             continue
 
-        # Collect new articles for this server
         new_articles = []
         for url in URLS:
             all_articles = fetch_articles(url)
@@ -198,7 +197,6 @@ async def check_and_post_articles():
                     new_articles.append((title, link, image_url))
                     posted_articles.add(link)
 
-        # Post new articles to the channel
         if new_articles:
             logger.info(f"Found {len(new_articles)} new articles for server {server_id}.")
             try:
@@ -206,11 +204,10 @@ async def check_and_post_articles():
             except Exception as e:
                 logger.error(f"Error posting articles to channel {channel_id}: {e}")
 
-    # Save the updated list of posted articles
     save_posted_articles()
 
 
-# --- Slash Command: Set Channel ---
+# --- /setchannel ---
 @bot.tree.command(name="setchannel", description="Set the channel for article updates.")
 async def setchannel(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.manage_channels:
@@ -230,7 +227,7 @@ async def setchannel(interaction: discord.Interaction):
     )
     logger.info(f"Set posting channel for server {server_id} to channel {channel_id}")
 
-# --- Slash Command: Set Role ---
+# --- /setrole ---
 @bot.tree.command(name="setrole", description="Set the role to ping for article updates.")
 async def setrole(interaction: discord.Interaction, role: discord.Role):
     try:
@@ -260,7 +257,7 @@ async def setrole(interaction: discord.Interaction, role: discord.Role):
 
 
 
-# --- Slash Command: PTCG News ---
+# --- /ptcgnews ---
 @bot.tree.command(name="ptcgnews", description="Check for updates on the Pokemon Trading Card Game.")
 async def ptcgnews(interaction: discord.Interaction):
     logger.info("Slash command /ptcgnews triggered.")
@@ -293,7 +290,7 @@ async def ptcgnews(interaction: discord.Interaction):
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
 
-# --- Bot Ready Event ---
+# --- bot ready event ---
 @bot.event
 async def on_ready():
     global posted_articles, server_channels
