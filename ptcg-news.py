@@ -16,6 +16,7 @@ URLS = [
 ]
 POSTED_ARTICLES_FILE = "posted_articles.json"
 SERVER_CHANNELS_FILE = "server_channels.json"
+SERVER_ROLES_FILE = "server_roles.json"
 
 # --- Logging Setup ---
 log_file = "bot_activity.log"
@@ -66,6 +67,26 @@ def save_server_channels(data):
             json.dump(data, file)
     except Exception as e:
         logger.error(f"Error saving server channels: {e}")
+
+# --- Track Server Roles ---
+server_roles = {}
+
+def load_server_roles():
+    if os.path.exists(SERVER_ROLES_FILE):
+        try:
+            with open(SERVER_ROLES_FILE, "r") as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            logger.error("Error decoding server roles file. Starting with an empty dictionary.")
+            return {}
+    return {}
+
+def save_server_roles(data):
+    try:
+        with open(SERVER_ROLES_FILE, "w") as file:
+            json.dump(data, file)
+    except Exception as e:
+        logger.error(f"Error saving server roles: {e}")
 
 # --- Discord Intents Setup ---
 intents = discord.Intents.default()
@@ -133,25 +154,35 @@ def fetch_first_paragraph(article_url):
 
 # --- Post Articles ---
 async def post_articles(channel, articles):
+    server_id = str(channel.guild.id)
+    role_id = server_roles.get(server_id)
+    role_mention = f"<@&{role_id}>" if role_id else ""
+
     for title, link, image_url in articles:
         first_paragraph = fetch_first_paragraph(link)
         description = f"{first_paragraph}\n\nRead more at {link}"
 
         embed = discord.Embed(title=title, url=link, description=description)
         embed.set_image(url=image_url)
-        await channel.send(embed=embed)
+
+        message_content = f"{role_mention}" if role_mention else None
+        await channel.send(content=message_content, embed=embed)
         logger.info(f"Posted article: {title} - {link}")
+
 
 # --- Background Task ---
 @tasks.loop(hours=1)
 async def check_and_post_articles():
     logger.info("Checking for new articles...")
+
     for server_id, channel_id in server_channels.items():
+        # Fetch the channel object
         channel = bot.get_channel(int(channel_id))
         if not channel:
             logger.error(f"Channel {channel_id} not found for server {server_id}.")
             continue
 
+        # Collect new articles for this server
         new_articles = []
         for url in URLS:
             all_articles = fetch_articles(url)
@@ -161,10 +192,17 @@ async def check_and_post_articles():
                     new_articles.append((title, link, image_url))
                     posted_articles.add(link)
 
+        # Post new articles to the channel
         if new_articles:
             logger.info(f"Found {len(new_articles)} new articles for server {server_id}.")
-            await post_articles(channel, new_articles)
-            save_posted_articles()
+            try:
+                await post_articles(channel, new_articles)
+            except Exception as e:
+                logger.error(f"Error posting articles to channel {channel_id}: {e}")
+
+    # Save the updated list of posted articles
+    save_posted_articles()
+
 
 # --- Slash Command: Set Channel ---
 @bot.tree.command(name="setchannel", description="Set the channel for article updates.")
@@ -185,6 +223,26 @@ async def setchannel(interaction: discord.Interaction):
         f"Updates will now be posted in this channel: {interaction.channel.mention} ✅", ephemeral=True
     )
     logger.info(f"Set posting channel for server {server_id} to channel {channel_id}")
+
+# --- Slash Command: Set Role ---
+@bot.tree.command(name="setrole", description="Set the role to ping for article updates.")
+async def setrole(interaction: discord.Interaction, role: discord.Role):
+    if not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message(
+            "You need the `Manage Roles` permission to use this command.", ephemeral=True
+        )
+        return
+
+    server_id = str(interaction.guild_id)
+    server_roles[server_id] = str(role.id)
+    save_server_roles(server_roles)
+
+    await interaction.response.send_message(
+        f"The role {role.mention} will now be pinged for article updates. ✅", ephemeral=True
+    )
+    logger.info(f"Set ping role for server {server_id} to role {role.id}")
+
+
 
 # --- Slash Command: PTCG News ---
 @bot.tree.command(name="ptcgnews", description="Check for updates on the Pokemon Trading Card Game.")
@@ -225,6 +283,7 @@ async def on_ready():
     global posted_articles, server_channels
     posted_articles = load_posted_articles()
     server_channels = load_server_channels()
+    server_roles = load_server_roles()
 
     try:
         await bot.tree.sync()
