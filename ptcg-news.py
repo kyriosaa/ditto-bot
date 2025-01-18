@@ -8,9 +8,9 @@ import os
 from dotenv import load_dotenv
 import json
 
-# --- Configuration ---
+# --- config ---
 load_dotenv()
-TOKEN = os.getenv("DISCORD_BOT_TOKEN")  # Bot token
+TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 URLS = [
     "https://www.pokebeach.com/"
 ]
@@ -157,7 +157,7 @@ def fetch_first_paragraph(article_url):
 async def post_articles(channel, articles):
     server_id = str(channel.guild.id)
     role_id = server_roles.get(server_id)
-    role_mention = f"<@&{role_id}>" if role_id else ""
+    role_mention = f"<@&{role_id}>" if role_id else None  # Role mention if role ID is available
 
     for title, link, image_url in articles:
         first_paragraph = fetch_first_paragraph(link)
@@ -166,9 +166,14 @@ async def post_articles(channel, articles):
         embed = discord.Embed(title=title, url=link, description=description)
         embed.set_image(url=image_url)
 
-        message_content = f"{role_mention}" if role_mention else None
-        await channel.send(content=message_content, embed=embed)
+        # Ensure the role mention is sent above the embed
+        if role_mention:
+            await channel.send(content=role_mention, embed=embed)
+        else:
+            await channel.send(embed=embed)
+
         logger.info(f"Posted article: {title} - {link}")
+
 
 
 # --- Background Task ---
@@ -231,19 +236,16 @@ async def setrole(interaction: discord.Interaction, role: discord.Role):
     try:
         logger.info(f"Setrole command triggered by {interaction.user} in server {interaction.guild_id} with role {role.id}")
 
-        # Check permissions
         if not interaction.user.guild_permissions.manage_roles:
             await interaction.response.send_message(
                 "You need the `Manage Roles` permission to use this command.", ephemeral=True
             )
             return
 
-        # Save the role
         server_id = str(interaction.guild_id)
         server_roles[server_id] = str(role.id)
         save_server_roles(server_roles)
 
-        # Respond to the interaction
         await interaction.response.send_message(
             f"The role {role.mention} will now be pinged for article updates. ✅", ephemeral=True
         )
