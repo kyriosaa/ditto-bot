@@ -90,7 +90,12 @@ def save_server_roles(data):
 intents = discord.Intents.default()
 intents.messages = True
 intents.members = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents,
+    allowed_mentions=discord.AllowedMentions(roles=False, users=False, everyone=False)
+)
+
 
 # --- fetch articles ---
 def fetch_articles(url):
@@ -166,13 +171,17 @@ async def post_articles(channel, articles):
         embed.set_image(url=image_url)
 
         try:
-            if role_mention: 
-                await channel.send(content=role_mention)
+            if role_mention:
+                await channel.send(
+                    content=role_mention,
+                    allowed_mentions=discord.AllowedMentions(roles=True)
+                )
             
             await channel.send(embed=embed)
             logger.info(f"Posted article: {title} - {link}")
         except Exception as e:
             logger.error(f"Failed to send message in channel {channel.id}: {e}")
+
 
 
 
