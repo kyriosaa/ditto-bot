@@ -1,5 +1,7 @@
 # Pokemon TCG News Bot
 
+- Invite link: https://discord.com/oauth2/authorize?client_id=1318567932661338183&permissions=2147502112&integration_type=0&scope=bot
+
 ## About
 
 - A simple Discord bot that scrapes the web for news relating to the Pokemon TCG and posts them to a channel.
