@@ -7,6 +7,7 @@ Invite link: https://discord.com/oauth2/authorize?client_id=1318567932661338183&
 - A simple Discord bot that scrapes the web for news relating to the Pokemon TCG and posts them to a channel.
 - Python
 - Bot hosted on personal Linux system
+- Articles from https://www.pokebeach.com/
 
 ## Usage
 
