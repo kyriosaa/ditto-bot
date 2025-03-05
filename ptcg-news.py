@@ -28,7 +28,9 @@ def setup_database():
     cursor = conn.cursor()
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS posted_articles (
-                        link TEXT PRIMARY KEY)''')
+                        server_id TEXT, 
+                        link TEXT,
+                        PRIMARY KEY (server_id, link))''')
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS server_channels (
                         server_id TEXT PRIMARY KEY, 
@@ -44,17 +46,17 @@ def setup_database():
 setup_database()
 
 # --- SQLite Functions ---
-def save_posted_article(link):
+def save_posted_article(server_id, link):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO posted_articles (link) VALUES (?)", (link,))
+    cursor.execute("INSERT OR IGNORE INTO posted_articles (server_id, link) VALUES (?, ?)", (server_id, link))
     conn.commit()
     conn.close()
 
-def load_posted_articles():
+def load_posted_articles(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT link FROM posted_articles")
+    cursor.execute("SELECT link FROM posted_articles WHERE server_id = ?", (server_id,))
     links = {row[0] for row in cursor.fetchall()}
     conn.close()
     return links
@@ -130,7 +132,6 @@ def fetch_articles(url):
 async def post_articles(channel, articles):
     server_id = str(channel.guild.id)
     role_id = get_server_role(server_id)
-
     role_mention = f"<@&{role_id}>" if role_id else None
 
     for title, link, image_url in articles:
@@ -140,9 +141,8 @@ async def post_articles(channel, articles):
         try:
             if role_mention:
                 await channel.send(content=role_mention, allowed_mentions=discord.AllowedMentions(roles=True))
-            
             await channel.send(embed=embed)
-            save_posted_article(link)  # Save posted article
+            save_posted_article(server_id, link)
         except Exception as e:
             logger.error(f"Failed to send message in {channel.id}: {e}")
 
@@ -150,7 +150,6 @@ async def post_articles(channel, articles):
 @tasks.loop(hours=1)
 async def check_and_post_articles():
     logger.info("Checking for new articles...")
-
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT server_id, channel_id FROM server_channels")
@@ -163,63 +162,9 @@ async def check_and_post_articles():
             logger.error(f"Channel {channel_id} not found for server {server_id}.")
             continue
 
-        new_articles = []
-        for url in URLS:
-            all_articles = fetch_articles(url)
-
-            for title, link, image_url in all_articles:
-                if link not in load_posted_articles():
-                    new_articles.append((title, link, image_url))
-
+        new_articles = [a for url in URLS for a in fetch_articles(url) if a[1] not in load_posted_articles(server_id)]
         if new_articles:
             await post_articles(channel, new_articles)
-
-# --- Slash Commands ---
-@bot.tree.command(name="setchannel", description="Set the channel for article updates.")
-async def setchannel(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.manage_channels:
-        await interaction.response.send_message("You need `Manage Channels` permission.", ephemeral=True)
-        return
-
-    server_id = str(interaction.guild_id)
-    channel_id = str(interaction.channel_id)
-
-    save_server_channel(server_id, channel_id)
-    await interaction.response.send_message(f"Updates will be posted in {interaction.channel.mention}. ✅", ephemeral=True)
-
-@bot.tree.command(name="setrole", description="Set the role to ping for article updates.")
-async def setrole(interaction: discord.Interaction, role: discord.Role):
-    if not interaction.user.guild_permissions.manage_roles:
-        await interaction.response.send_message("You need `Manage Roles` permission.", ephemeral=True)
-        return
-
-    server_id = str(interaction.guild_id)
-    save_server_role(server_id, str(role.id))
-
-    await interaction.response.send_message(f"The role {role.mention} will be pinged for updates. ✅", ephemeral=True)
-
-@bot.tree.command(name="ptcgnews", description="Check for new PTCG updates.")
-async def ptcgnews(interaction: discord.Interaction):
-    await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
-
-    server_id = str(interaction.guild_id)
-    channel_id = get_server_channel(server_id)
-    if not channel_id:
-        await interaction.followup.send("No channel set. Use `/setchannel` first.", ephemeral=True)
-        return
-
-    channel = bot.get_channel(int(channel_id))
-    if not channel:
-        await interaction.followup.send("Invalid channel. Reset it with `/setchannel`.", ephemeral=True)
-        return
-
-    new_articles = [a for url in URLS for a in fetch_articles(url) if a[1] not in load_posted_articles()]
-    
-    if new_articles:
-        await post_articles(channel, new_articles)
-        await interaction.followup.send(f"Posted {len(new_articles)} articles. ✅", ephemeral=True)
-    else:
-        await interaction.followup.send("No new articles found. ✅", ephemeral=True)
 
 @bot.event
 async def on_ready():
