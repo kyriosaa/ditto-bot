@@ -1,3 +1,5 @@
 .env
 posted_articles.json
 server_roles.json
+bot_activity.log
+bot_data.db

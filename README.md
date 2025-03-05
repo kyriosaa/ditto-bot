@@ -8,9 +8,18 @@ Invite link: https://discord.com/oauth2/authorize?client_id=1318567932661338183&
 - Python
 - Bot hosted on personal Linux system
 
+## Usage
+
+- **/ptcgnews -** Run this command anywhere and it will check for any recent articles. If new articles are found, the bot will post them on the channel set by /setchannel along with a notification to the role set by /setrole.
+- **/setchannel -** Run this command followed by the channel that you want to set. The bot will post updates to that channel.
+- **/setrole -** Run this command followed by the role that you want to set. The bot will notify that role whenever a new article is posted.
+
 ## Features
 
 - **Automatic Updates -** Checks for updates every hour and automatically posts new articles to a discord channel.
-- **Slash Commands -** Manual update checks using the **/ptcgnews** command.
+- **Manual Updates -** Manual update checks using the **/ptcgnews** command.
+- **Channel Settings -** Set a posting channel using the **/setchannel** command.
+- **Role Settings -** Set a notification role using the **/setrole** command.
 - **Custom Embed -** Takes the article title, image, and first paragraph to create an embed link that is easy to read and understand.
+- **SQLite Database -** Uses SQLite to manage posted articles, server channels, and roles.
 - **Activity Logging -** Logs every interaction to a local text file.
