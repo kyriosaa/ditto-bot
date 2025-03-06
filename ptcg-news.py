@@ -102,10 +102,10 @@ def fetch_articles(url):
     try:
         response = requests.get(url)
         if response.status_code != 200:
-            logger.error(f"Error fetching {url}: {response.status_code}")
+            logger.error(f"Error fetching the webpage: {url}. Status code: {response.status_code}")
             return []
     except requests.RequestException as e:
-        logger.error(f"Request error for {url}: {e}")
+        logger.error(f"Request error while fetching {url}: {e}")
         return []
 
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -124,7 +124,37 @@ def fetch_articles(url):
             image_url = image_tag['src']
             fetched_articles.append((title, full_link, image_url))
 
+    logger.info(f"Fetched {len(fetched_articles)} articles from {url}.")
     return fetched_articles
+
+def fetch_first_paragraph(article_url):
+    try:
+        response = requests.get(article_url)
+        if response.status_code != 200:
+            logger.error(f"Error fetching the article {article_url}. Status code: {response.status_code}")
+            return ""
+    except requests.RequestException as e:
+        logger.error(f"Request error while fetching {article_url}: {e}")
+        return ""
+    
+    soup = BeautifulSoup(response.content, 'html.parser')
+    first_article = soup.find('article')
+    if not first_article:
+        logger.warning(f"No <article> tag found in the article {article_url}.")
+        return "No content available."
+
+    nested_div = first_article.find('div')
+    if nested_div:
+        nested_div = nested_div.find('div') 
+        if nested_div:
+            nested_div = nested_div.find('div')  
+            if nested_div:
+                first_paragraph = nested_div.find('p')  
+                if first_paragraph:
+                    return first_paragraph.text.strip()
+    
+    logger.warning(f"No <p> tag found in the article {article_url}.")
+    return "No content available."
 
 # --- Post Articles ---
 async def post_articles(channel, articles):
@@ -134,17 +164,23 @@ async def post_articles(channel, articles):
     role_mention = f"<@&{role_id}>" if role_id else None
 
     for title, link, image_url in articles:
-        embed = discord.Embed(title=title, url=link, description=f"Read more at {link}")
+        first_paragraph = fetch_first_paragraph(link)
+        description = f"{first_paragraph}\n\nRead more at {link}"
+
+        embed = discord.Embed(title=title, url=link, description=description)
         embed.set_image(url=image_url)
 
         try:
             if role_mention:
-                await channel.send(content=role_mention, allowed_mentions=discord.AllowedMentions(roles=True))
+                await channel.send(
+                    content=role_mention,
+                    allowed_mentions=discord.AllowedMentions(roles=True)
+                )
             
             await channel.send(embed=embed)
-            save_posted_article(link)  # Save posted article
+            logger.info(f"Posted article: {title} - {link}")
         except Exception as e:
-            logger.error(f"Failed to send message in {channel.id}: {e}")
+            logger.error(f"Failed to send message in channel {channel.id}: {e}")
 
 # --- Background Task ---
 @tasks.loop(hours=1)
