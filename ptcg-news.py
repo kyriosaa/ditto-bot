@@ -178,6 +178,7 @@ async def post_articles(channel, articles):
                 )
             
             await channel.send(embed=embed)
+            save_posted_article(link)
             logger.info(f"Posted article: {title} - {link}")
         except Exception as e:
             logger.error(f"Failed to send message in channel {channel.id}: {e}")
