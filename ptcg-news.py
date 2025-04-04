@@ -265,4 +265,24 @@ async def on_ready():
     logger.info(f"Logged in as {bot.user}")
     check_and_post_articles.start()
 
+# runs once when the bot joins a new server
+@bot.event
+async def on_guild_join(guild):
+    try:
+        owner = guild.owner
+
+        if owner:
+            message = (
+                f"Hey {owner.name}! Here are some tips to get the PTCG News Bot set up in your server.\n\n"
+                "/setchannel - send this command in the channel that you want the bot to post to.\n"
+                "/setrole <role> - send this command along with the role you want the bot to ping when posting.\n\n"
+                "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
+            )
+            await owner.send(message)
+            logger.info(f"Sent welcome message to the owner of {guild.name}.")
+        else:
+            logger.warning(f"Could not find the owner for the guild {guild.name}.")
+    except Exception as e:
+        logger.error(f"Failed to send a welcome message for guild {guild.name}: {e}")
+
 bot.run(TOKEN)
