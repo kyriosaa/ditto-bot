@@ -336,7 +336,7 @@ async def check_and_post_articles():
             await post_articles(channel, pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_pocket_first_paragraph)
 
     posted_links.update({link for _, link, _ in pocket_articles})
-    for link in {link for _, link, _ in ptcg_articles}:
+    for link in {link for _, link, _ in pocket_articles}:
         save_posted_article(link)
         posted_links.add(link)
     # ---------------------------------------------------------------
