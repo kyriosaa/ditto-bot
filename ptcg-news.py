@@ -11,7 +11,8 @@ import sqlite3
 # --- bot config ---
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-URLS = ["https://www.pokebeach.com/"]
+PTCG_URLS = ["https://www.pokebeach.com/"]
+POCKET_URLS = ["https://www.pokemon-zone.com/articles/", "https://www.pokemon-zone.com/events/"]
 DB_FILE = "bot_data.db"
 
 # --- logging setup ---
@@ -30,11 +31,19 @@ def setup_database():
     cursor.execute('''CREATE TABLE IF NOT EXISTS posted_articles (
                         link TEXT PRIMARY KEY)''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS server_channels (
+    cursor.execute('''CREATE TABLE IF NOT EXISTS ptcg_channels (
+                        server_id TEXT PRIMARY KEY, 
+                        channel_id TEXT)''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS pocket_channels (
                         server_id TEXT PRIMARY KEY, 
                         channel_id TEXT)''')
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS server_roles (
+    cursor.execute('''CREATE TABLE IF NOT EXISTS ptcg_roles (
+                        server_id TEXT PRIMARY KEY, 
+                        role_id TEXT)''')
+    
+    cursor.execute('''CREATE TABLE IF NOT EXISTS pocket_roles (
                         server_id TEXT PRIMARY KEY, 
                         role_id TEXT)''')
     
@@ -59,34 +68,66 @@ def load_posted_articles():
     conn.close()
     return links
 
-def save_server_channel(server_id, channel_id):
+def save_ptcg_channel(server_id, channel_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO server_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
+    cursor.execute("INSERT INTO ptcg_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
                    (server_id, channel_id))
     conn.commit()
     conn.close()
 
-def get_server_channel(server_id):
+def get_ptcg_channel(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT channel_id FROM server_channels WHERE server_id = ?", (server_id,))
+    cursor.execute("SELECT channel_id FROM ptcg_channels WHERE server_id = ?", (server_id,))
     row = cursor.fetchone()
     conn.close()
     return row[0] if row else None
 
-def save_server_role(server_id, role_id):
+def save_ptcg_role(server_id, role_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO server_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
+    cursor.execute("INSERT INTO ptcg_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
                    (server_id, role_id))
     conn.commit()
     conn.close()
 
-def get_server_role(server_id):
+def get_ptcg_role(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT role_id FROM server_roles WHERE server_id = ?", (server_id,))
+    cursor.execute("SELECT role_id FROM ptcg_roles WHERE server_id = ?", (server_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def save_pocket_channel(server_id, channel_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO pocket_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
+                   (server_id, channel_id))
+    conn.commit()
+    conn.close()
+
+def get_pocket_channel(server_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT channel_id FROM pocket_channels WHERE server_id = ?", (server_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def save_pocket_role(server_id, role_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO pocket_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
+                   (server_id, role_id))
+    conn.commit()
+    conn.close()
+
+def get_pocket_role(server_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT role_id FROM pocket_roles WHERE server_id = ?", (server_id,))
     row = cursor.fetchone()
     conn.close()
     return row[0] if row else None
@@ -98,7 +139,8 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # --- Fetch Articles ---
-def fetch_articles(url):
+# PTCG
+def fetch_ptcg_articles(url):
     try:
         response = requests.get(url)
         if response.status_code != 200:
@@ -127,7 +169,7 @@ def fetch_articles(url):
     logger.info(f"Fetched {len(fetched_articles)} articles from {url}.")
     return fetched_articles
 
-def fetch_first_paragraph(article_url):
+def fetch_ptcg_first_paragraph(article_url):
     try:
         response = requests.get(article_url)
         if response.status_code != 200:
@@ -156,15 +198,70 @@ def fetch_first_paragraph(article_url):
     logger.warning(f"No <p> tag found in the article {article_url}.")
     return "No content available."
 
+# ------------------------------------------------------------------------------------------------------------
+
+# POCKET
+def fetch_pocket_articles(url):
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:
+            logger.error(f"Error fetching the webpage: {url}. Status code: {response.status_code}")
+            return []
+    except requests.RequestException as e:
+        logger.error(f"Request error while fetching {url}: {e}")
+        return []
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    if 'articles' in url:
+        title_tag_name = 'h3'
+        article_class = 'article-preview'
+    else:
+        title_tag_name = 'h2'
+        article_class = 'featured-article-preview'
+
+    articles = soup.find_all('article', class_=article_class)
+    fetched_articles = []
+
+    for article in articles:
+        title_tag = article.find(title_tag_name)
+        link_tag = article.find('a')
+        image_tag = article.find('img')
+
+        if title_tag and link_tag and image_tag:
+            title = title_tag.text.strip()
+            link = link_tag['href']
+            full_link = f"https://www.pokemon-zone.com{link}" if link.startswith("/") else link
+            image_url = image_tag['src']
+            fetched_articles.append((title, full_link, image_url))
+
+    logger.info(f"Fetched {len(fetched_articles)} articles from {url}.")
+    return fetched_articles
+
+def fetch_pocket_first_paragraph(article_url):
+    try:
+        response = requests.get(article_url)
+        if response.status_code != 200:
+            logger.error(f"Error fetching the article {article_url}. Status code: {response.status_code}")
+            return ""
+    except requests.RequestException as e:
+        logger.error(f"Request error while fetching {article_url}: {e}")
+        return ""
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    first_paragraph = soup.find('p')
+    return first_paragraph.text.strip() if first_paragraph else ""
+# ------------------------------------------------------------------------------------------------------------
+
 # --- Post Articles ---
-async def post_articles(channel, articles):
+async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
     server_id = str(channel.guild.id)
-    role_id = get_server_role(server_id)
+    role_id = get_ptcg_role(server_id)
 
     role_mention = f"<@&{role_id}>" if role_id else None
 
     for title, link, image_url in articles:
-        first_paragraph = fetch_first_paragraph(link)
+        first_paragraph = paragraph_fetcher(link) if paragraph_fetcher else ""
         description = f"{first_paragraph}\n\nRead more at {link}"
 
         embed = discord.Embed(title=title, url=link, description=description)
@@ -188,31 +285,63 @@ async def post_articles(channel, articles):
 async def check_and_post_articles():
     logger.info("Checking for new articles...")
 
+    # ---------------------------------------------------------------
+    # PTCG
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT server_id, channel_id FROM server_channels")
-    server_channels = cursor.fetchall()
+    cursor.execute("SELECT server_id, channel_id FROM ptcg_channels")
+    ptcg_channels = cursor.fetchall()
     conn.close()
 
-    new_articles = []
-    for url in URLS:
-        all_articles = fetch_articles(url)
+    ptcg_articles = []
+    for url in PTCG_URLS:
+        all_articles = fetch_ptcg_articles(url)
 
         for title, link, image_url in all_articles:
             if link not in load_posted_articles():
-                new_articles.append((title, link, image_url))
+                ptcg_articles.append((title, link, image_url))
 
     # Post to all configured channels
-    for server_id, channel_id in server_channels:
+    for server_id, channel_id in ptcg_channels:
         channel = bot.get_channel(int(channel_id))
         if not channel:
             logger.error(f"Channel {channel_id} not found for server {server_id}.")
             continue
 
-        if new_articles:
-            await post_articles(channel, new_articles)
+        if ptcg_articles:
+            role_id = get_ptcg_role(server_id)
+            role_mention = f"<@&{role_id}>" if role_id else None
+            await post_articles(channel, ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
+    # ---------------------------------------------------------------
+    
+    # ---------------------------------------------------------------
+    # POCKET
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT server_id, channel_id FROM pocket_channels")
+    pocket_channels = cursor.fetchall()
+    conn.close()
+
+    pocket_articles = []
+    for url in POCKET_URLS:
+        all_articles = fetch_pocket_articles(url)
+        for title, link, image_url in all_articles:
+            if link not in load_posted_articles():
+                pocket_articles.append((title, link, image_url))
+
+    for server_id, channel_id in pocket_channels:
+        channel = bot.get_channel(int(channel_id))
+        if not channel:
+            logger.error(f"Pocket channel {channel_id} not found for server {server_id}.")
+            continue
+        if pocket_articles:
+            role_id = get_pocket_role(server_id) 
+            role_mention = f"<@&{role_id}>" if role_id else None
+            await post_articles(channel, pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
+    # ---------------------------------------------------------------
 
 # --- Slash Commands ---
+# /setptcg
 @bot.tree.command(name="setptcg", description="Set the channel and role for PTCG updates.")
 async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
     if not interaction.user.guild_permissions.manage_channels or not interaction.user.guild_permissions.manage_roles:
@@ -223,34 +352,51 @@ async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel
         return
 
     server_id = str(interaction.guild_id)
-    save_server_channel(server_id, str(channel.id))
-    save_server_role(server_id, str(role.id))
+    save_ptcg_channel(server_id, str(channel.id))
+    save_ptcg_role(server_id, str(role.id))
 
     await interaction.response.send_message(
         f"✅ Updates will be posted in {channel.mention} and the role {role.mention} will be pinged.",
         ephemeral=True
     )
 
+# /setpocket
+@bot.tree.command(name="setpocket", description="Set the channel and role for Pokémon Pocket updates.")
+async def setpocket(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
+    if not interaction.user.guild_permissions.manage_channels or not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message("You need `Manage Channels` and `Manage Roles` permissions.", ephemeral=True)
+        return
+
+    server_id = str(interaction.guild_id)
+    save_pocket_channel(server_id, str(channel.id))
+    save_pocket_role(server_id, str(role.id))
+
+    await interaction.response.send_message(
+        f"✅ Pocket updates will be posted in {channel.mention} and ping {role.mention}.",
+        ephemeral=True
+    )
+
+# /update
 @bot.tree.command(name="update", description="Check for new PTCG updates.")
 async def ptcgnews(interaction: discord.Interaction):
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
     server_id = str(interaction.guild_id)
-    channel_id = get_server_channel(server_id)
+    channel_id = get_ptcg_channel(server_id)
     if not channel_id:
-        await interaction.followup.send("No channel set. Use `/setchannel` first.", ephemeral=True)
+        await interaction.followup.send("No channel set. Use `/setptcg` first.", ephemeral=True)
         return
 
     channel = bot.get_channel(int(channel_id))
     if not channel:
-        await interaction.followup.send("Invalid channel. Reset it with `/setchannel`.", ephemeral=True)
+        await interaction.followup.send("Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
         return
 
-    new_articles = [a for url in URLS for a in fetch_articles(url) if a[1] not in load_posted_articles()]
+    ptcg_articles = [a for url in PTCG_URLS for a in fetch_ptcg_articles(url) if a[1] not in load_posted_articles()]
     
-    if new_articles:
-        await post_articles(channel, new_articles)
-        await interaction.followup.send(f"Posted {len(new_articles)} articles. ✅", ephemeral=True)
+    if ptcg_articles:
+        await post_articles(channel, ptcg_articles)
+        await interaction.followup.send(f"Posted {len(ptcg_articles)} articles. ✅", ephemeral=True)
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
 
@@ -269,8 +415,8 @@ async def on_guild_join(guild):
         if owner:
             message = (
                 f"Hey {owner.name}! Here are some tips to get me set up in your server.\n\n"
-                "/setchannel - send this command in the channel that you want me to post to.\n"
-                "/setrole <role> - send this command along with the role you want the bot to ping when posting.\n\n"
+                "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
+                "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n\n"
                 "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
             )
             await owner.send(message)
