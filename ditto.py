@@ -256,7 +256,7 @@ def fetch_pocket_first_paragraph(article_url):
 # --- Post Articles ---
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
     server_id = str(channel.guild.id)
-    role_id = get_ptcg_role(server_id)
+    role_id = role_mention
 
     role_mention = f"<@&{role_id}>" if role_id else None
 
@@ -284,21 +284,22 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
 @tasks.loop(hours=1)
 async def check_and_post_articles():
     logger.info("Checking for new articles...")
+    posted_links = load_posted_articles()
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
 
     # ---------------------------------------------------------------
     # PTCG
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
     cursor.execute("SELECT server_id, channel_id FROM ptcg_channels")
     ptcg_channels = cursor.fetchall()
-    conn.close()
 
     ptcg_articles = []
     for url in PTCG_URLS:
         all_articles = fetch_ptcg_articles(url)
 
         for title, link, image_url in all_articles:
-            if link not in load_posted_articles():
+            if link not in posted_links:
                 ptcg_articles.append((title, link, image_url))
 
     # Post to all configured channels
@@ -312,21 +313,22 @@ async def check_and_post_articles():
             role_id = get_ptcg_role(server_id)
             role_mention = f"<@&{role_id}>" if role_id else None
             await post_articles(channel, ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
+    
+    posted_links.update({link for _, link, _ in ptcg_articles})
+    for link in {link for _, link, _ in ptcg_articles}:
+        save_posted_article(link)
     # ---------------------------------------------------------------
     
     # ---------------------------------------------------------------
     # POCKET
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
     cursor.execute("SELECT server_id, channel_id FROM pocket_channels")
     pocket_channels = cursor.fetchall()
-    conn.close()
 
     pocket_articles = []
     for url in POCKET_URLS:
         all_articles = fetch_pocket_articles(url)
         for title, link, image_url in all_articles:
-            if link not in load_posted_articles():
+            if link not in posted_links:
                 pocket_articles.append((title, link, image_url))
 
     for server_id, channel_id in pocket_channels:
@@ -337,8 +339,14 @@ async def check_and_post_articles():
         if pocket_articles:
             role_id = get_pocket_role(server_id) 
             role_mention = f"<@&{role_id}>" if role_id else None
-            await post_articles(channel, pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
+            await post_articles(channel, pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_pocket_first_paragraph)
+
+    posted_links.update({link for _, link, _ in pocket_articles})
+    for link in {link for _, link, _ in pocket_articles}:
+        save_posted_article(link)
     # ---------------------------------------------------------------
+
+    conn.close()
 
 # --- Slash Commands ---
 # /setptcg
@@ -404,7 +412,9 @@ async def ptcgnews(interaction: discord.Interaction):
 async def on_ready():
     await bot.tree.sync()
     logger.info(f"Logged in as {bot.user}")
-    check_and_post_articles.start()
+    if not check_and_post_articles.is_running():
+        check_and_post_articles.start()
+
 
 # runs once when the bot joins a new server
 @bot.event
