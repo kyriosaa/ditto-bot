@@ -213,30 +213,25 @@ async def check_and_post_articles():
             await post_articles(channel, new_articles)
 
 # --- Slash Commands ---
-@bot.tree.command(name="setchannel", description="Set the channel for article updates.")
-async def setchannel(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.manage_channels:
-        await interaction.response.send_message("You need `Manage Channels` permission.", ephemeral=True)
+@bot.tree.command(name="setptcg", description="Set the channel and role for PTCG updates.")
+async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
+    if not interaction.user.guild_permissions.manage_channels or not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message(
+            "You need both `Manage Channels` and `Manage Roles` permissions to use this command.", 
+            ephemeral=True
+        )
         return
 
     server_id = str(interaction.guild_id)
-    channel_id = str(interaction.channel_id)
-
-    save_server_channel(server_id, channel_id)
-    await interaction.response.send_message(f"Updates will be posted in {interaction.channel.mention}. ✅", ephemeral=True)
-
-@bot.tree.command(name="setrole", description="Set the role to ping for article updates.")
-async def setrole(interaction: discord.Interaction, role: discord.Role):
-    if not interaction.user.guild_permissions.manage_roles:
-        await interaction.response.send_message("You need `Manage Roles` permission.", ephemeral=True)
-        return
-
-    server_id = str(interaction.guild_id)
+    save_server_channel(server_id, str(channel.id))
     save_server_role(server_id, str(role.id))
 
-    await interaction.response.send_message(f"The role {role.mention} will be pinged for updates. ✅", ephemeral=True)
+    await interaction.response.send_message(
+        f"✅ Updates will be posted in {channel.mention} and the role {role.mention} will be pinged.",
+        ephemeral=True
+    )
 
-@bot.tree.command(name="ptcgnews", description="Check for new PTCG updates.")
+@bot.tree.command(name="update", description="Check for new PTCG updates.")
 async def ptcgnews(interaction: discord.Interaction):
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
@@ -273,8 +268,8 @@ async def on_guild_join(guild):
 
         if owner:
             message = (
-                f"Hey {owner.name}! Here are some tips to get the PTCG News Bot set up in your server.\n\n"
-                "/setchannel - send this command in the channel that you want the bot to post to.\n"
+                f"Hey {owner.name}! Here are some tips to get me set up in your server.\n\n"
+                "/setchannel - send this command in the channel that you want me to post to.\n"
                 "/setrole <role> - send this command along with the role you want the bot to ping when posting.\n\n"
                 "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
             )
