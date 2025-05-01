@@ -255,11 +255,6 @@ def fetch_pocket_first_paragraph(article_url):
 
 # --- Post Articles ---
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
-    server_id = str(channel.guild.id)
-    role_id = role_mention
-
-    role_mention = f"<@&{role_id}>" if role_id else None
-
     for title, link, image_url in articles:
         first_paragraph = paragraph_fetcher(link) if paragraph_fetcher else ""
         description = f"{first_paragraph}\n\nRead more at {link}"
@@ -273,7 +268,6 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
                     content=role_mention,
                     allowed_mentions=discord.AllowedMentions(roles=True)
                 )
-            
             await channel.send(embed=embed)
             save_posted_article(link)
             logger.info(f"Posted article: {title} - {link}")
@@ -342,8 +336,9 @@ async def check_and_post_articles():
             await post_articles(channel, pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_pocket_first_paragraph)
 
     posted_links.update({link for _, link, _ in pocket_articles})
-    for link in {link for _, link, _ in pocket_articles}:
+    for link in {link for _, link, _ in ptcg_articles}:
         save_posted_article(link)
+        posted_links.add(link)
     # ---------------------------------------------------------------
 
     conn.close()
