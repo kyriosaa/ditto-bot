@@ -135,6 +135,7 @@ def get_pocket_role(server_id):
 # --- Discord Setup ---
 intents = discord.Intents.default()
 intents.messages = True
+intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
