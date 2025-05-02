@@ -436,14 +436,16 @@ async def on_guild_join(guild):
 @bot.event
 async def on_message(message):
     if message.author.bot:
-        return  # ignore messages from other bots
+        return  # Ignore messages from bots
 
-    content = message.content.lower()
-    if "pocket" in content and "trade" in content:
+    lower_msg = message.content.lower()
+
+    if "pocket" in lower_msg and "trading" in lower_msg:
         await message.channel.send(
             "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
         )
 
-    await bot.process_commands(message)
+    await bot.process_commands(message)  # Keeps slash commands working
+
 
 bot.run(TOKEN)
