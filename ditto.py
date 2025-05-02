@@ -1,12 +1,14 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import discord
-from discord.ext import tasks, commands
 import requests
-from bs4 import BeautifulSoup
 import os
-from dotenv import load_dotenv
 import sqlite3
+# import asyncio
+
+from logging.handlers import RotatingFileHandler
+from discord.ext import tasks, commands
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
 # --- bot config ---
 load_dotenv()
@@ -49,7 +51,8 @@ def setup_database():
     
     cursor.execute('''CREATE TABLE IF NOT EXISTS word_check (
                         server_id TEXT PRIMARY KEY,
-                        role_id TEXT)''')
+                        role_id TEXT,
+                        enabled INTEGER DEFAULT 0)''')
     
     conn.commit()
     conn.close()
@@ -148,22 +151,22 @@ def get_pocket_role(server_id):
 
 # SQLite - toggles on/off the function for word checking
 def toggle_word_check(guild_id):
-    conn = sqlite3.connect("your_database.db")
+    conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     current = is_word_check_enabled(guild_id)
     if current:
-        c.execute("UPDATE word_check_settings SET enabled = 0 WHERE guild_id = ?", (guild_id,))
+        c.execute("UPDATE word_check SET enabled = 0 WHERE guild_id = ?", (guild_id,))
     else:
-        c.execute("INSERT OR REPLACE INTO word_check_settings (guild_id, enabled) VALUES (?, ?)", (guild_id, 1))
+        c.execute("INSERT OR REPLACE INTO word_check (guild_id, enabled) VALUES (?, ?)", (guild_id, 1))
     conn.commit()
     conn.close()
     return not current
 
 # SQLite - checks if the word checking function is turned on or off for each server
 def is_word_check_enabled(guild_id):
-    conn = sqlite3.connect("your_database.db")
+    conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT enabled FROM word_check_settings WHERE guild_id = ?", (guild_id,))
+    c.execute("SELECT enabled FROM word_check WHERE guild_id = ?", (guild_id,))
     row = c.fetchone()
     conn.close()
     return row[0] == 1 if row else False
