@@ -445,11 +445,17 @@ async def trading(interaction: discord.Interaction):
 
 # /togglewordcheck
 @bot.tree.command(name="togglewordcheck", description="Toggle on/off the word checking functionality.")
-@commands.has_permissions(administrator=True)
 async def togglewordcheck(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        return
+
+    await interaction.response.defer()
+
     new_state = toggle_word_check(interaction.guild.id)
     status = "enabled" if new_state else "disabled"
     await interaction.followup.send(f"Word check has been {status}.")
+
 
 # --- Events ---
 # log in event
