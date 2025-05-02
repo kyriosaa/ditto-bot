@@ -198,8 +198,6 @@ def fetch_ptcg_first_paragraph(article_url):
     logger.warning(f"No <p> tag found in the article {article_url}.")
     return "No content available."
 
-# ------------------------------------------------------------------------------------------------------------
-
 # POCKET
 def fetch_pocket_articles(url):
     try:
@@ -251,7 +249,6 @@ def fetch_pocket_first_paragraph(article_url):
     soup = BeautifulSoup(response.content, 'html.parser')
     first_paragraph = soup.find('p')
     return first_paragraph.text.strip() if first_paragraph else ""
-# ------------------------------------------------------------------------------------------------------------
 
 # --- Post Articles ---
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
@@ -283,7 +280,6 @@ async def check_and_post_articles():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    # ---------------------------------------------------------------
     # PTCG
     cursor.execute("SELECT server_id, channel_id FROM ptcg_channels")
     ptcg_channels = cursor.fetchall()
@@ -311,9 +307,7 @@ async def check_and_post_articles():
     posted_links.update({link for _, link, _ in ptcg_articles})
     for link in {link for _, link, _ in ptcg_articles}:
         save_posted_article(link)
-    # ---------------------------------------------------------------
     
-    # ---------------------------------------------------------------
     # POCKET
     cursor.execute("SELECT server_id, channel_id FROM pocket_channels")
     pocket_channels = cursor.fetchall()
@@ -339,7 +333,6 @@ async def check_and_post_articles():
     for link in {link for _, link, _ in pocket_articles}:
         save_posted_article(link)
         posted_links.add(link)
-    # ---------------------------------------------------------------
 
     conn.close()
 
@@ -381,7 +374,7 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
 
 # /update
 @bot.tree.command(name="update", description="Check for new PTCG updates.")
-async def ptcgnews(interaction: discord.Interaction):
+async def update(interaction: discord.Interaction):
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
     server_id = str(interaction.guild_id)
@@ -402,6 +395,14 @@ async def ptcgnews(interaction: discord.Interaction):
         await interaction.followup.send(f"Posted {len(ptcg_articles)} articles. ✅", ephemeral=True)
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
+
+# /trading
+@bot.tree.command(name="trading", description="Tell users how to access the trading channels.")
+async def trading(interaction: discord.Interaction):
+        await interaction.response.send_message(
+            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️", 
+            ephemeral=True
+        )
 
 @bot.event
 async def on_ready():
