@@ -47,12 +47,17 @@ def setup_database():
                         server_id TEXT PRIMARY KEY, 
                         role_id TEXT)''')
     
+    cursor.execute('''CREATE TABLE IF NOT EXISTS word_check (
+                        server_id TEXT PRIMARY KEY,
+                        role_id TEXT)''')
+    
     conn.commit()
     conn.close()
 
 setup_database()
 
 # --- SQLite Functions ---
+# SQLite - SAVES articles to prevent future repeating articles
 def save_posted_article(link):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -60,6 +65,7 @@ def save_posted_article(link):
     conn.commit()
     conn.close()
 
+# SQLite - LOADS previously posted articles to avoid repeats
 def load_posted_articles():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -68,6 +74,7 @@ def load_posted_articles():
     conn.close()
     return links
 
+# SQLite - SAVES the posting channel for PTCG articles
 def save_ptcg_channel(server_id, channel_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -76,6 +83,7 @@ def save_ptcg_channel(server_id, channel_id):
     conn.commit()
     conn.close()
 
+# SQLite - GETS the posting channel for PTCG articles
 def get_ptcg_channel(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -84,6 +92,7 @@ def get_ptcg_channel(server_id):
     conn.close()
     return row[0] if row else None
 
+# SQLite - SAVES the ping role for PTCG articles
 def save_ptcg_role(server_id, role_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -92,6 +101,7 @@ def save_ptcg_role(server_id, role_id):
     conn.commit()
     conn.close()
 
+# SQLite - GETS the ping role for PTCG articles
 def get_ptcg_role(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -100,6 +110,7 @@ def get_ptcg_role(server_id):
     conn.close()
     return row[0] if row else None
 
+# SQLite - SAVES the posting channel for Pocket articles
 def save_pocket_channel(server_id, channel_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -108,6 +119,7 @@ def save_pocket_channel(server_id, channel_id):
     conn.commit()
     conn.close()
 
+# SQLite - GETS the posting channel for Pocket articles
 def get_pocket_channel(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -116,6 +128,7 @@ def get_pocket_channel(server_id):
     conn.close()
     return row[0] if row else None
 
+# SQLite - SAVES the ping role for Pocket articles
 def save_pocket_role(server_id, role_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -124,6 +137,7 @@ def save_pocket_role(server_id, role_id):
     conn.commit()
     conn.close()
 
+# SQLite - GETS the ping role for Pocket articles
 def get_pocket_role(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -131,6 +145,28 @@ def get_pocket_role(server_id):
     row = cursor.fetchone()
     conn.close()
     return row[0] if row else None
+
+# SQLite - toggles on/off the function for word checking
+def toggle_word_check(guild_id):
+    conn = sqlite3.connect("your_database.db")
+    c = conn.cursor()
+    current = is_word_check_enabled(guild_id)
+    if current:
+        c.execute("UPDATE word_check_settings SET enabled = 0 WHERE guild_id = ?", (guild_id,))
+    else:
+        c.execute("INSERT OR REPLACE INTO word_check_settings (guild_id, enabled) VALUES (?, ?)", (guild_id, 1))
+    conn.commit()
+    conn.close()
+    return not current
+
+# SQLite - checks if the word checking function is turned on or off for each server
+def is_word_check_enabled(guild_id):
+    conn = sqlite3.connect("your_database.db")
+    c = conn.cursor()
+    c.execute("SELECT enabled FROM word_check_settings WHERE guild_id = ?", (guild_id,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] == 1 if row else False
 
 # --- Discord Setup ---
 intents = discord.Intents.default()
@@ -397,13 +433,22 @@ async def update(interaction: discord.Interaction):
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
 
-# /trading
+# /trading (similar to /togglewordcheck but this is manual and can be ignored if unused)
 @bot.tree.command(name="trading", description="Tell users how to access the trading channels.")
 async def trading(interaction: discord.Interaction):
         await interaction.response.send_message(
             "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
         )
 
+# /togglewordcheck
+@bot.tree.command(name="togglewordcheck", description="Toggle on/off the word checking functionality.")
+@commands.has_permissions(administrator=True)
+async def togglewordcheck(interaction: discord.Interaction):
+    new_state = toggle_word_check(interaction.guild.id)
+    status = "enabled" if new_state else "disabled"
+    await interaction.followup.send(f"Word check has been {status}.")
+
+# --- Events ---
 # log in event
 @bot.event
 async def on_ready():
@@ -411,7 +456,6 @@ async def on_ready():
     logger.info(f"Logged in as {bot.user}")
     if not check_and_post_articles.is_running():
         check_and_post_articles.start()
-
 
 # new server welcome event
 @bot.event
@@ -437,16 +481,16 @@ async def on_guild_join(guild):
 @bot.event
 async def on_message(message):
     if message.author.bot:
-        return  # Ignore messages from bots
+        return  # ignore messages from other bots
 
-    lower_msg = message.content.lower()
+    if is_word_check_enabled(message.guild.id):
+        lower_msg = message.content.lower()
+        if "pocket" in lower_msg and "trading" in lower_msg:
+            await message.channel.send(
+                "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
+            )
 
-    if "pocket" in lower_msg and "trading" in lower_msg:
-        await message.channel.send(
-            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
-        )
-
-    await bot.process_commands(message)  # Keeps slash commands working
+    await bot.process_commands(message)
 
 
 bot.run(TOKEN)
