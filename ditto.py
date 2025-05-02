@@ -403,6 +403,7 @@ async def trading(interaction: discord.Interaction):
             "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
         )
 
+# log in event
 @bot.event
 async def on_ready():
     await bot.tree.sync()
@@ -411,7 +412,7 @@ async def on_ready():
         check_and_post_articles.start()
 
 
-# runs once when the bot joins a new server
+# new server welcome event
 @bot.event
 async def on_guild_join(guild):
     try:
@@ -430,5 +431,19 @@ async def on_guild_join(guild):
             logger.warning(f"Could not find the owner for the guild {guild.name}.")
     except Exception as e:
         logger.error(f"Failed to send a welcome message for guild {guild.name}: {e}")
+
+# "pocket" & "trading" word check event
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return  # ignore messages from other bots
+
+    content = message.content.lower()
+    if "pocket" in content and "trade" in content:
+        await message.channel.send(
+            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
+        )
+
+    await bot.process_commands(message)
 
 bot.run(TOKEN)
