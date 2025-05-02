@@ -400,8 +400,7 @@ async def update(interaction: discord.Interaction):
 @bot.tree.command(name="trading", description="Tell users how to access the trading channels.")
 async def trading(interaction: discord.Interaction):
         await interaction.response.send_message(
-            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️", 
-            ephemeral=True
+            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
         )
 
 @bot.event
