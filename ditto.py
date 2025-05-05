@@ -483,11 +483,11 @@ async def update(interaction: discord.Interaction):
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
 
-# /trading (similar to /togglewordcheck but this is manual and can be ignored if unused)
+# /trading (manual warning message)
 @bot.tree.command(name="trading", description="Tell users how to access the trading channels.")
 async def trading(interaction: discord.Interaction):
         await interaction.response.send_message(
-            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
+            "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
         )
 
 # /setregex
@@ -603,7 +603,8 @@ async def on_message(message):
     pattern = get_regex_pattern(server_id)
     if pattern and re.search(pattern, message.content, re.IGNORECASE):
         await message.channel.send(
-            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
+            "Hey! It seems like you're looking for information on how to trade.\n\n"
+            "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
         )
 
     await bot.process_commands(message)
