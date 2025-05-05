@@ -3,20 +3,21 @@ import discord
 import requests
 import os
 import sqlite3
+import re
 
 from logging.handlers import RotatingFileHandler
 from discord.ext import tasks, commands
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-# --- bot config ---
+# --- Bot config ---
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 PTCG_URLS = ["https://www.pokebeach.com/"]
 POCKET_URLS = ["https://www.pokemon-zone.com/articles/", "https://www.pokemon-zone.com/events/"]
 DB_FILE = "bot_data.db"
 
-# --- logging setup ---
+# --- Logging setup ---
 log_file = "bot_activity.log"
 logger = logging.getLogger("ptcg-news")
 logger.setLevel(logging.INFO)
@@ -29,14 +30,12 @@ def setup_database():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
+    # Posted articles
     cursor.execute('''CREATE TABLE IF NOT EXISTS posted_articles (
                         link TEXT PRIMARY KEY)''')
 
+    # PTCG channels & roles
     cursor.execute('''CREATE TABLE IF NOT EXISTS ptcg_channels (
-                        server_id TEXT PRIMARY KEY, 
-                        channel_id TEXT)''')
-    
-    cursor.execute('''CREATE TABLE IF NOT EXISTS pocket_channels (
                         server_id TEXT PRIMARY KEY, 
                         channel_id TEXT)''')
 
@@ -44,14 +43,25 @@ def setup_database():
                         server_id TEXT PRIMARY KEY, 
                         role_id TEXT)''')
     
+    # Pocket channels & roles
+    cursor.execute('''CREATE TABLE IF NOT EXISTS pocket_channels (
+                        server_id TEXT PRIMARY KEY, 
+                        channel_id TEXT)''')
+    
     cursor.execute('''CREATE TABLE IF NOT EXISTS pocket_roles (
                         server_id TEXT PRIMARY KEY, 
                         role_id TEXT)''')
     
-    # cursor.execute('''CREATE TABLE IF NOT EXISTS word_check (
-    #                     server_id TEXT PRIMARY KEY,
-    #                     role_id TEXT,
-    #                     enabled INTEGER DEFAULT 0)''')
+    # Regex patterns
+    cursor.execute('''CREATE TABLE IF NOT EXISTS regex_patterns (
+                        server_id TEXT PRIMARY KEY,
+                        pattern TEXT)''')
+    
+    # Regex-ignored channels
+    cursor.execute('''CREATE TABLE IF NOT EXISTS regex_ignored_channels (
+                    server_id TEXT,
+                    channel_id TEXT,
+                    PRIMARY KEY (server_id, channel_id))''')
     
     conn.commit()
     conn.close()
@@ -148,27 +158,59 @@ def get_pocket_role(server_id):
     conn.close()
     return row[0] if row else None
 
-# # SQLite - toggles on/off the function for word checking
-# def toggle_word_check(guild_id):
-#     conn = sqlite3.connect(DB_FILE)
-#     c = conn.cursor()
-#     current = is_word_check_enabled(guild_id)
-#     if current:
-#         c.execute("UPDATE word_check SET enabled = 0 WHERE guild_id = ?", (guild_id,))
-#     else:
-#         c.execute("INSERT OR REPLACE INTO word_check (guild_id, enabled) VALUES (?, ?)", (guild_id, 1))
-#     conn.commit()
-#     conn.close()
-#     return not current
+# SQLite - SAVES regex pattern
+def save_regex_pattern(server_id, pattern):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO regex_patterns (server_id, pattern) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET pattern = excluded.pattern", 
+                   (server_id, pattern))
+    conn.commit()
+    conn.close()
 
-# # SQLite - checks if the word checking function is turned on or off for each server
-# def is_word_check_enabled(guild_id):
-#     conn = sqlite3.connect(DB_FILE)
-#     c = conn.cursor()
-#     c.execute("SELECT enabled FROM word_check WHERE guild_id = ?", (guild_id,))
-#     row = c.fetchone()
-#     conn.close()
-#     return row[0] == 1 if row else False
+# SQLite - GETS regex pattern
+def get_regex_pattern(server_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT pattern FROM regex_patterns WHERE server_id = ?", (server_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+# SQLite - REMOVES regex pattern
+def remove_regex_pattern(server_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM regex_patterns WHERE server_id = ?", (server_id,))
+    conn.commit()
+    conn.close()
+
+# SQLite - SAVES regex ignored channel
+def save_regex_ignored_channel(server_id, channel_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO regex_ignored_channels (server_id, channel_id) VALUES (?, ?)", 
+                   (server_id, channel_id))
+    conn.commit()
+    conn.close()
+
+# SQLite - REMOVES regex ignored channel
+def remove_regex_ignored_channel(server_id, channel_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM regex_ignored_channels WHERE server_id = ? AND channel_id = ?", 
+                   (server_id, channel_id))
+    conn.commit()
+    conn.close()
+
+# SQLite - GETS regex ignored channel
+def get_regex_ignored_channels(server_id):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT channel_id FROM regex_ignored_channels WHERE server_id = ?", (server_id,))
+    ignored = {row[0] for row in cursor.fetchall()}
+    conn.close()
+    return ignored
+
 
 # --- Discord Setup ---
 intents = discord.Intents.default()
@@ -442,6 +484,30 @@ async def trading(interaction: discord.Interaction):
             "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
         )
 
+# /setregex
+@bot.tree.command(name="setregex", description="Set a regex pattern for word checking.")
+async def setregex(interaction: discord.Interaction, pattern: str):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        return
+
+    server_id = str(interaction.guild_id)
+    save_regex_pattern(server_id, pattern)
+
+    await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`", ephemeral=True)
+
+# /removeregex
+@bot.tree.command(name="removeregex", description="Remove the regex pattern for word checking.")
+async def removeregex(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        return
+
+    server_id = str(interaction.guild_id)
+    remove_regex_pattern(server_id)
+
+    await interaction.response.send_message("✅ Regex pattern removed.", ephemeral=True)
+
 # # /togglewordcheck
 # @bot.tree.command(name="togglewordcheck", description="Toggle on/off the word checking functionality.")
 # async def togglewordcheck(interaction: discord.Interaction):
@@ -485,20 +551,24 @@ async def on_guild_join(guild):
     except Exception as e:
         logger.error(f"Failed to send a welcome message for guild {guild.name}: {e}")
 
-# # "pocket" & "trading" word check event
-# @bot.event
-# async def on_message(message):
-#     if message.author.bot:
-#         return  # ignore messages from other bots
+# "pocket" & "trading" word check event
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return  # ignore messages from other bots
 
-#     if is_word_check_enabled(message.guild.id):
-#         lower_msg = message.content.lower()
-#         if "pocket" in lower_msg and "trading" in lower_msg:
-#             await message.channel.send(
-#                 "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
-#             )
+    # Get the regex pattern for the server
+    server_id = str(message.guild.id)
+    pattern = get_regex_pattern(server_id)
 
-#     await bot.process_commands(message)
+    if pattern:
+        # Check if the message matches the regex pattern
+        if re.search(pattern, message.content, re.IGNORECASE):
+            await message.channel.send(
+                "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
+            )
+
+    await bot.process_commands(message)
 
 
 bot.run(TOKEN)
