@@ -188,8 +188,10 @@ def remove_regex_pattern(server_id):
 def save_regex_ignored_channel(server_id, channel_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO regex_ignored_channels (server_id, channel_id) VALUES (?, ?)", 
-                   (server_id, channel_id))
+    cursor.execute(
+        "INSERT OR IGNORE INTO regex_ignored_channels (server_id, channel_id) VALUES (?, ?)",
+        (server_id, channel_id),
+    )
     conn.commit()
     conn.close()
 
@@ -197,8 +199,10 @@ def save_regex_ignored_channel(server_id, channel_id):
 def remove_regex_ignored_channel(server_id, channel_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM regex_ignored_channels WHERE server_id = ? AND channel_id = ?", 
-                   (server_id, channel_id))
+    cursor.execute(
+        "DELETE FROM regex_ignored_channels WHERE server_id = ? AND channel_id = ?",
+        (server_id, channel_id),
+    )
     conn.commit()
     conn.close()
 
@@ -206,7 +210,9 @@ def remove_regex_ignored_channel(server_id, channel_id):
 def get_regex_ignored_channels(server_id):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT channel_id FROM regex_ignored_channels WHERE server_id = ?", (server_id,))
+    cursor.execute(
+        "SELECT channel_id FROM regex_ignored_channels WHERE server_id = ?", (server_id,)
+    )
     ignored = {row[0] for row in cursor.fetchall()}
     conn.close()
     return ignored
@@ -508,19 +514,47 @@ async def removeregex(interaction: discord.Interaction):
 
     await interaction.response.send_message("✅ Regex pattern removed.", ephemeral=True)
 
-# # /togglewordcheck
-# @bot.tree.command(name="togglewordcheck", description="Toggle on/off the word checking functionality.")
-# async def togglewordcheck(interaction: discord.Interaction):
-#     if not interaction.user.guild_permissions.administrator:
-#         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
-#         return
+# /addignoredchannel
+@bot.tree.command(name="addignoredchannel", description="Add a channel to the regex ignored list.")
+async def addignoredchannel(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        return
 
-#     await interaction.response.defer()
+    server_id = str(interaction.guild_id)
+    save_regex_ignored_channel(server_id, str(channel.id))
 
-#     new_state = toggle_word_check(interaction.guild.id)
-#     status = "enabled" if new_state else "disabled"
-#     await interaction.followup.send(f"Word check has been {status}.")
+    await interaction.response.send_message(f"✅ Channel {channel.mention} has been added to the ignored list.", ephemeral=True)
 
+# /removeignoredchannel
+@bot.tree.command(name="removeignoredchannel", description="Remove a channel from the regex ignored list.")
+async def removeignoredchannel(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        return
+
+    server_id = str(interaction.guild_id)
+    remove_regex_ignored_channel(server_id, str(channel.id))
+
+    await interaction.response.send_message(f"✅ Channel {channel.mention} has been removed from the ignored list.", ephemeral=True)
+
+# /listignoredchannels
+@bot.tree.command(name="listignoredchannels", description="List all channels ignored by the regex check.")
+async def listignoredchannels(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        return
+
+    server_id = str(interaction.guild_id)
+    ignored_channels = get_regex_ignored_channels(server_id)
+
+    if ignored_channels:
+        channels = [f"<#{channel_id}>" for channel_id in ignored_channels]
+        await interaction.response.send_message(
+            "✅ Ignored channels:\n" + "\n".join(channels), ephemeral=True
+        )
+    else:
+        await interaction.response.send_message("No channels are currently ignored.", ephemeral=True)
 
 # --- Events ---
 # log in event
@@ -551,22 +585,26 @@ async def on_guild_join(guild):
     except Exception as e:
         logger.error(f"Failed to send a welcome message for guild {guild.name}: {e}")
 
-# "pocket" & "trading" word check event
+# regex check event
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return  # ignore messages from other bots
 
-    # Get the regex pattern for the server
     server_id = str(message.guild.id)
-    pattern = get_regex_pattern(server_id)
+    ignored_channels = get_regex_ignored_channels(server_id)
 
-    if pattern:
-        # Check if the message matches the regex pattern
-        if re.search(pattern, message.content, re.IGNORECASE):
-            await message.channel.send(
-                "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
-            )
+    # check if the message's channel or its parent (for forum posts) is ignored
+    if str(message.channel.id) in ignored_channels or (
+        hasattr(message.channel, "parent") and str(message.channel.parent.id) in ignored_channels
+    ):
+        return
+
+    pattern = get_regex_pattern(server_id)
+    if pattern and re.search(pattern, message.content, re.IGNORECASE):
+        await message.channel.send(
+            "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
+        )
 
     await bot.process_commands(message)
 
