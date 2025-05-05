@@ -516,7 +516,7 @@ async def removeregex(interaction: discord.Interaction):
 
 # /addignoredchannel
 @bot.tree.command(name="addignoredchannel", description="Add a channel to the regex ignored list.")
-async def addignoredchannel(interaction: discord.Interaction, channel: discord.TextChannel):
+async def addignoredchannel(interaction: discord.Interaction, channel: discord.abc.GuildChannel):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
         return
@@ -528,7 +528,7 @@ async def addignoredchannel(interaction: discord.Interaction, channel: discord.T
 
 # /removeignoredchannel
 @bot.tree.command(name="removeignoredchannel", description="Remove a channel from the regex ignored list.")
-async def removeignoredchannel(interaction: discord.Interaction, channel: discord.TextChannel):
+async def removeignoredchannel(interaction: discord.Interaction, channel: discord.abc.GuildChannel):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
         return
@@ -551,7 +551,7 @@ async def listignoredchannels(interaction: discord.Interaction):
     if ignored_channels:
         channels = [f"<#{channel_id}>" for channel_id in ignored_channels]
         await interaction.response.send_message(
-            "✅ Ignored channels:\n" + "\n".join(channels), ephemeral=True
+            "✅ Ignored channels:\n" + "\n".join(channels)
         )
     else:
         await interaction.response.send_message("No channels are currently ignored.", ephemeral=True)
