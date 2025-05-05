@@ -425,7 +425,7 @@ async def check_and_post_articles():
 
 # --- Slash Commands ---
 # /setptcg
-@bot.tree.command(name="setptcg", description="Set the channel and role for PTCG updates.")
+@bot.tree.command(name="setptcg", description="Set the channel and role for PTCG updates")
 async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
     if not interaction.user.guild_permissions.manage_channels or not interaction.user.guild_permissions.manage_roles:
         await interaction.response.send_message(
@@ -444,7 +444,7 @@ async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel
     )
 
 # /setpocket
-@bot.tree.command(name="setpocket", description="Set the channel and role for Pokémon Pocket updates.")
+@bot.tree.command(name="setpocket", description="Set the channel and role for Pokémon Pocket updates")
 async def setpocket(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
     if not interaction.user.guild_permissions.manage_channels or not interaction.user.guild_permissions.manage_roles:
         await interaction.response.send_message("You need `Manage Channels` and `Manage Roles` permissions.", ephemeral=True)
@@ -460,7 +460,7 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
     )
 
 # /update
-@bot.tree.command(name="update", description="Check for new PTCG updates.")
+@bot.tree.command(name="update", description="Check for news updates")
 async def update(interaction: discord.Interaction):
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
@@ -484,14 +484,14 @@ async def update(interaction: discord.Interaction):
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
 
 # /trading (manual warning message)
-@bot.tree.command(name="trading", description="Tell users how to access the trading channels.")
+@bot.tree.command(name="trading", description="Manual command to tell users how to access the trading channels")
 async def trading(interaction: discord.Interaction):
         await interaction.response.send_message(
             "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
         )
 
 # /setregex
-@bot.tree.command(name="setregex", description="Set a regex pattern for word checking.")
+@bot.tree.command(name="setregex", description="Set a regex pattern for word checking")
 async def setregex(interaction: discord.Interaction, pattern: str):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
@@ -503,7 +503,7 @@ async def setregex(interaction: discord.Interaction, pattern: str):
     await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`", ephemeral=True)
 
 # /removeregex
-@bot.tree.command(name="removeregex", description="Remove the regex pattern for word checking.")
+@bot.tree.command(name="removeregex", description="Remove the regex pattern for word checking")
 async def removeregex(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
@@ -515,7 +515,7 @@ async def removeregex(interaction: discord.Interaction):
     await interaction.response.send_message("✅ Regex pattern removed.", ephemeral=True)
 
 # /addignoredchannel
-@bot.tree.command(name="addignoredchannel", description="Add a channel to the regex ignored list.")
+@bot.tree.command(name="addignoredchannel", description="Add a channel to be ignored by the regex check")
 async def addignoredchannel(interaction: discord.Interaction, channel: discord.abc.GuildChannel):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
@@ -527,7 +527,7 @@ async def addignoredchannel(interaction: discord.Interaction, channel: discord.a
     await interaction.response.send_message(f"✅ Channel {channel.mention} has been added to the ignored list.", ephemeral=True)
 
 # /removeignoredchannel
-@bot.tree.command(name="removeignoredchannel", description="Remove a channel from the regex ignored list.")
+@bot.tree.command(name="removeignoredchannel", description="Remove a channel to be ignored by the regex check")
 async def removeignoredchannel(interaction: discord.Interaction, channel: discord.abc.GuildChannel):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
@@ -539,7 +539,7 @@ async def removeignoredchannel(interaction: discord.Interaction, channel: discor
     await interaction.response.send_message(f"✅ Channel {channel.mention} has been removed from the ignored list.", ephemeral=True)
 
 # /listignoredchannels
-@bot.tree.command(name="listignoredchannels", description="List all channels ignored by the regex check.")
+@bot.tree.command(name="listignoredchannels", description="Lists all channels ignored by the regex check")
 async def listignoredchannels(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
@@ -574,8 +574,17 @@ async def on_guild_join(guild):
         if owner:
             message = (
                 f"Hey {owner.name}! Here are some tips to get me set up in your server.\n\n"
+                "__News Updates__\n"
                 "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
-                "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n\n"
+                "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n"
+                "**/update** - Check for news updates.\n\n"
+                "__Regex__\n"
+                "**/setregex <pattern>** - Set a regex pattern for word checking.\n"
+                "**/removeregex** - Remove the regex pattern.\n"
+                "**/addignoredchannel <channel>** - Add a channel to be ignored by the regex check.\n"
+                "**/removeignoredchannel <channel>** - Remove a channel to be ignored by the regex check.\n"
+                "**/listignoredchannels** - Lists all channels ignored by the regex check.\n"
+                "**/trading** - Manual command to tell users how to access the trading channels.\n\n"
                 "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
             )
             await owner.send(message)
