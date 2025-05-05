@@ -10,13 +10,13 @@ Invite link: https://discord.com/oauth2/authorize?client_id=1318567932661338183&
 
 ## Usage
 
-<u>News Updates</u>
+*News Updates*
 
 - **/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.
 - **/setpocket <channel> <role>** - Set the channel and role for **Pocket** news updates.
 - **/update** - Run this command anywhere and it will check for any recent articles (normally checks every hour).
 
-<u>Regex</u>
+*Regex*
 
 - **/setregex <pattern>** - Set a regex pattern for word checking.
 - **/removeregex** - Remove the regex pattern.

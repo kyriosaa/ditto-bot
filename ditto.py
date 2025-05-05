@@ -439,8 +439,7 @@ async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel
     save_ptcg_role(server_id, str(role.id))
 
     await interaction.response.send_message(
-        f"✅ Updates will be posted in {channel.mention} and the role {role.mention} will be pinged.",
-        ephemeral=True
+        f"✅ Updates will be posted in {channel.mention} and the role {role.mention} will be pinged."
     )
 
 # /setpocket
@@ -455,8 +454,7 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
     save_pocket_role(server_id, str(role.id))
 
     await interaction.response.send_message(
-        f"✅ Pocket updates will be posted in {channel.mention} and ping {role.mention}.",
-        ephemeral=True
+        f"✅ Pocket updates will be posted in {channel.mention} and ping {role.mention}."
     )
 
 # /update
@@ -500,7 +498,7 @@ async def setregex(interaction: discord.Interaction, pattern: str):
     server_id = str(interaction.guild_id)
     save_regex_pattern(server_id, pattern)
 
-    await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`", ephemeral=True)
+    await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`")
 
 # /removeregex
 @bot.tree.command(name="removeregex", description="Remove the regex pattern for word checking")
@@ -512,7 +510,7 @@ async def removeregex(interaction: discord.Interaction):
     server_id = str(interaction.guild_id)
     remove_regex_pattern(server_id)
 
-    await interaction.response.send_message("✅ Regex pattern removed.", ephemeral=True)
+    await interaction.response.send_message("✅ Regex pattern removed.")
 
 # /addignoredchannel
 @bot.tree.command(name="addignoredchannel", description="Add a channel to be ignored by the regex check")
@@ -524,7 +522,7 @@ async def addignoredchannel(interaction: discord.Interaction, channel: discord.a
     server_id = str(interaction.guild_id)
     save_regex_ignored_channel(server_id, str(channel.id))
 
-    await interaction.response.send_message(f"✅ Channel {channel.mention} has been added to the ignored list.", ephemeral=True)
+    await interaction.response.send_message(f"✅ Channel {channel.mention} has been added to the ignored list.")
 
 # /removeignoredchannel
 @bot.tree.command(name="removeignoredchannel", description="Remove a channel to be ignored by the regex check")
@@ -536,7 +534,7 @@ async def removeignoredchannel(interaction: discord.Interaction, channel: discor
     server_id = str(interaction.guild_id)
     remove_regex_ignored_channel(server_id, str(channel.id))
 
-    await interaction.response.send_message(f"✅ Channel {channel.mention} has been removed from the ignored list.", ephemeral=True)
+    await interaction.response.send_message(f"✅ Channel {channel.mention} has been removed from the ignored list.")
 
 # /listignoredchannels
 @bot.tree.command(name="listignoredchannels", description="Lists all channels ignored by the regex check")
