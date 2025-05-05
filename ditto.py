@@ -3,7 +3,6 @@ import discord
 import requests
 import os
 import sqlite3
-# import asyncio
 
 from logging.handlers import RotatingFileHandler
 from discord.ext import tasks, commands
@@ -49,10 +48,10 @@ def setup_database():
                         server_id TEXT PRIMARY KEY, 
                         role_id TEXT)''')
     
-    cursor.execute('''CREATE TABLE IF NOT EXISTS word_check (
-                        server_id TEXT PRIMARY KEY,
-                        role_id TEXT,
-                        enabled INTEGER DEFAULT 0)''')
+    # cursor.execute('''CREATE TABLE IF NOT EXISTS word_check (
+    #                     server_id TEXT PRIMARY KEY,
+    #                     role_id TEXT,
+    #                     enabled INTEGER DEFAULT 0)''')
     
     conn.commit()
     conn.close()
@@ -149,27 +148,27 @@ def get_pocket_role(server_id):
     conn.close()
     return row[0] if row else None
 
-# SQLite - toggles on/off the function for word checking
-def toggle_word_check(guild_id):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    current = is_word_check_enabled(guild_id)
-    if current:
-        c.execute("UPDATE word_check SET enabled = 0 WHERE guild_id = ?", (guild_id,))
-    else:
-        c.execute("INSERT OR REPLACE INTO word_check (guild_id, enabled) VALUES (?, ?)", (guild_id, 1))
-    conn.commit()
-    conn.close()
-    return not current
+# # SQLite - toggles on/off the function for word checking
+# def toggle_word_check(guild_id):
+#     conn = sqlite3.connect(DB_FILE)
+#     c = conn.cursor()
+#     current = is_word_check_enabled(guild_id)
+#     if current:
+#         c.execute("UPDATE word_check SET enabled = 0 WHERE guild_id = ?", (guild_id,))
+#     else:
+#         c.execute("INSERT OR REPLACE INTO word_check (guild_id, enabled) VALUES (?, ?)", (guild_id, 1))
+#     conn.commit()
+#     conn.close()
+#     return not current
 
-# SQLite - checks if the word checking function is turned on or off for each server
-def is_word_check_enabled(guild_id):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT enabled FROM word_check WHERE guild_id = ?", (guild_id,))
-    row = c.fetchone()
-    conn.close()
-    return row[0] == 1 if row else False
+# # SQLite - checks if the word checking function is turned on or off for each server
+# def is_word_check_enabled(guild_id):
+#     conn = sqlite3.connect(DB_FILE)
+#     c = conn.cursor()
+#     c.execute("SELECT enabled FROM word_check WHERE guild_id = ?", (guild_id,))
+#     row = c.fetchone()
+#     conn.close()
+#     return row[0] == 1 if row else False
 
 # --- Discord Setup ---
 intents = discord.Intents.default()
@@ -443,18 +442,18 @@ async def trading(interaction: discord.Interaction):
             "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
         )
 
-# /togglewordcheck
-@bot.tree.command(name="togglewordcheck", description="Toggle on/off the word checking functionality.")
-async def togglewordcheck(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
-        return
+# # /togglewordcheck
+# @bot.tree.command(name="togglewordcheck", description="Toggle on/off the word checking functionality.")
+# async def togglewordcheck(interaction: discord.Interaction):
+#     if not interaction.user.guild_permissions.administrator:
+#         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+#         return
 
-    await interaction.response.defer()
+#     await interaction.response.defer()
 
-    new_state = toggle_word_check(interaction.guild.id)
-    status = "enabled" if new_state else "disabled"
-    await interaction.followup.send(f"Word check has been {status}.")
+#     new_state = toggle_word_check(interaction.guild.id)
+#     status = "enabled" if new_state else "disabled"
+#     await interaction.followup.send(f"Word check has been {status}.")
 
 
 # --- Events ---
@@ -486,20 +485,20 @@ async def on_guild_join(guild):
     except Exception as e:
         logger.error(f"Failed to send a welcome message for guild {guild.name}: {e}")
 
-# "pocket" & "trading" word check event
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return  # ignore messages from other bots
+# # "pocket" & "trading" word check event
+# @bot.event
+# async def on_message(message):
+#     if message.author.bot:
+#         return  # ignore messages from other bots
 
-    if is_word_check_enabled(message.guild.id):
-        lower_msg = message.content.lower()
-        if "pocket" in lower_msg and "trading" in lower_msg:
-            await message.channel.send(
-                "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
-            )
+#     if is_word_check_enabled(message.guild.id):
+#         lower_msg = message.content.lower()
+#         if "pocket" in lower_msg and "trading" in lower_msg:
+#             await message.channel.send(
+#                 "Please read the post titled **READ ME** at the top of the trading channel for more information on how to trade. 🏛️"
+#             )
 
-    await bot.process_commands(message)
+#     await bot.process_commands(message)
 
 
 bot.run(TOKEN)
