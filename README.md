@@ -4,9 +4,8 @@ Invite link: https://discord.com/oauth2/authorize?client_id=1318567932661338183&
 
 ## About
 
-- A simple Discord bot that scrapes the web for news relating to the Pokemon TCG/Pocket and posts them to a channel.
-- Python
-- Bot hosted on personal Linux system
+- A custom Discord bot built with Python using ```discord.py```. Features include automated moderation, user interaction commands, and integration with external APIs. Designed to be modular, scalable, and easy to extend for custom server needs.
+- Hosted on personal Linux system
 
 ## Usage
 

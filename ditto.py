@@ -609,7 +609,7 @@ async def on_message(message):
 
     pattern = get_regex_pattern(server_id)
     if pattern and re.search(pattern, message.content, re.IGNORECASE):
-        await message.channel.send(
+        await message.reply(
             "Hey! It seems like you're looking for information on how to trade.\n\n"
             "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
         )
