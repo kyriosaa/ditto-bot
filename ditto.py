@@ -612,7 +612,7 @@ async def on_message(message):
         await message.reply(
             "👋🏽 Hey! It seems like you're looking to trade cards.\n\n"
             "We already have a specific channel for trading in PTCG Pocket so please read the post titled **READ ME** at the top of <#1334205216320655483> for more information. 🏛️\n"
-            "If you're unable to make a listing, please grab the <@&1280337287309299744> role at <#908131369085968394>!"
+            "If you're unable to make a listing, please grab the ```Union Room``` role at <#908131369085968394>!"
         )
 
     await bot.process_commands(message)
