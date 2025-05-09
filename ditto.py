@@ -441,6 +441,7 @@ async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel
     await interaction.response.send_message(
         f"✅ Updates will be posted in {channel.mention} and the role {role.mention} will be pinged."
     )
+    logger.info(f"/setptcg command run on server {server_id}. Channel: {channel.id} | Role: {role.id}.")
 
 # /setpocket
 @bot.tree.command(name="setpocket", description="Set the channel and role for Pokémon Pocket updates")
@@ -456,6 +457,7 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
     await interaction.response.send_message(
         f"✅ Pocket updates will be posted in {channel.mention} and ping {role.mention}."
     )
+    logger.info(f"/setpocket command run on server {server_id}. Channel: {channel.id} | Role: {role.id}.")
 
 # /update
 @bot.tree.command(name="update", description="Check for news updates")
@@ -484,9 +486,11 @@ async def update(interaction: discord.Interaction):
 # /trading (manual warning message)
 @bot.tree.command(name="trading", description="Manual command to tell users how to access the trading channels")
 async def trading(interaction: discord.Interaction):
-        await interaction.response.send_message(
-            "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
-        )
+    server_id = str(interaction.guild_id)
+    await interaction.response.send_message(
+        "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
+    )
+    logger.info(f"/trading command run on server {server_id}.")
 
 # /setregex
 @bot.tree.command(name="setregex", description="Set a regex pattern for word checking")
@@ -499,6 +503,7 @@ async def setregex(interaction: discord.Interaction, pattern: str):
     save_regex_pattern(server_id, pattern)
 
     await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`")
+    logger.info(f"/setregex command run on server {server_id}. Pattern: {pattern}.")
 
 # /removeregex
 @bot.tree.command(name="removeregex", description="Remove the regex pattern for word checking")
@@ -511,6 +516,7 @@ async def removeregex(interaction: discord.Interaction):
     remove_regex_pattern(server_id)
 
     await interaction.response.send_message("✅ Regex pattern removed.")
+    logger.info(f"/removeregex command run on server {server_id}.")
 
 # /addignoredchannel
 @bot.tree.command(name="addignoredchannel", description="Add a channel to be ignored by the regex check")
@@ -586,6 +592,7 @@ async def on_guild_join(guild):
                 "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
             )
             await owner.send(message)
+            logger.info(f"Bot added to new server of ID {guild.id}")
             logger.info(f"Sent welcome message to the owner of {guild.name}.")
         else:
             logger.warning(f"Could not find the owner for the guild {guild.name}.")
@@ -614,6 +621,7 @@ async def on_message(message):
             "We already have a specific channel for trading in PTCG Pocket so please read the post titled **READ ME** at the top of <#1334205216320655483> for more information. 🏛️\n"
             "If you're unable to make a listing, please grab the *Union Room* role at <#908131369085968394>!"
         )
+        logger.info(f"Regex match triggered at server {server_id}.")
 
     await bot.process_commands(message)
 
