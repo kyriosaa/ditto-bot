@@ -71,151 +71,215 @@ setup_database()
 # --- SQLite Functions ---
 # SQLite - SAVES articles to prevent future repeating articles
 def save_posted_article(link):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO posted_articles (link) VALUES (?)", (link,))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR IGNORE INTO posted_articles (link) VALUES (?)", (link,))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save article: {e}")
+    finally:
+        conn.close()
 
 # SQLite - LOADS previously posted articles to avoid repeats
 def load_posted_articles():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT link FROM posted_articles")
-    links = {row[0] for row in cursor.fetchall()}
-    conn.close()
-    return links
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT link FROM posted_articles")
+        links = {row[0] for row in cursor.fetchall()}
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to load articles: {e}")
+    finally:
+        conn.close()
+        return links
 
 # SQLite - SAVES the posting channel for PTCG articles
 def save_ptcg_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO ptcg_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
-                   (server_id, channel_id))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO ptcg_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
+                    (server_id, channel_id))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save ptcg channel: {e}")
+    finally:
+        conn.close()
 
 # SQLite - GETS the posting channel for PTCG articles
 def get_ptcg_channel(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT channel_id FROM ptcg_channels WHERE server_id = ?", (server_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT channel_id FROM ptcg_channels WHERE server_id = ?", (server_id,))
+        row = cursor.fetchone()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to get ptcg channel: {e}")
+    finally:
+        conn.close()
+        return row[0] if row else None
 
 # SQLite - SAVES the ping role for PTCG articles
 def save_ptcg_role(server_id, role_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO ptcg_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
-                   (server_id, role_id))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO ptcg_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
+                    (server_id, role_id))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save ptcg role: {e}")
+    finally:
+        conn.close()
 
 # SQLite - GETS the ping role for PTCG articles
 def get_ptcg_role(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT role_id FROM ptcg_roles WHERE server_id = ?", (server_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT role_id FROM ptcg_roles WHERE server_id = ?", (server_id,))
+        row = cursor.fetchone()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to get ptcg role: {e}")
+    finally:
+        conn.close()
+        return row[0] if row else None
 
 # SQLite - SAVES the posting channel for Pocket articles
 def save_pocket_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO pocket_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
-                   (server_id, channel_id))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO pocket_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
+                    (server_id, channel_id))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save pocket channel: {e}")
+    finally:
+        conn.close()
 
 # SQLite - GETS the posting channel for Pocket articles
 def get_pocket_channel(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT channel_id FROM pocket_channels WHERE server_id = ?", (server_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT channel_id FROM pocket_channels WHERE server_id = ?", (server_id,))
+        row = cursor.fetchone()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to get pocket channel: {e}")
+    finally:
+        conn.close()
+        return row[0] if row else None
 
 # SQLite - SAVES the ping role for Pocket articles
 def save_pocket_role(server_id, role_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO pocket_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
-                   (server_id, role_id))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO pocket_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
+                    (server_id, role_id))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save pocket role: {e}")
+    finally:
+        conn.close()
 
 # SQLite - GETS the ping role for Pocket articles
 def get_pocket_role(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT role_id FROM pocket_roles WHERE server_id = ?", (server_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT role_id FROM pocket_roles WHERE server_id = ?", (server_id,))
+        row = cursor.fetchone()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to get pocket role: {e}")
+    finally:
+        conn.close()
+        return row[0] if row else None
 
 # SQLite - SAVES regex pattern
 def save_regex_pattern(server_id, pattern):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO regex_patterns (server_id, pattern) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET pattern = excluded.pattern", 
-                   (server_id, pattern))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO regex_patterns (server_id, pattern) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET pattern = excluded.pattern", 
+                    (server_id, pattern))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save regex pattern: {e}")
+    finally:
+        conn.close()
 
 # SQLite - GETS regex pattern
 def get_regex_pattern(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT pattern FROM regex_patterns WHERE server_id = ?", (server_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT pattern FROM regex_patterns WHERE server_id = ?", (server_id,))
+        row = cursor.fetchone()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to get regex pattern: {e}")
+    finally:
+        conn.close()
+        return row[0] if row else None
 
 # SQLite - REMOVES regex pattern
 def remove_regex_pattern(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM regex_patterns WHERE server_id = ?", (server_id,))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM regex_patterns WHERE server_id = ?", (server_id,))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to remove regex pattern: {e}")
+    finally:
+        conn.close()
 
 # SQLite - SAVES regex ignored channel
 def save_regex_ignored_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR IGNORE INTO regex_ignored_channels (server_id, channel_id) VALUES (?, ?)",
-        (server_id, channel_id),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR IGNORE INTO regex_ignored_channels (server_id, channel_id) VALUES (?, ?)",
+            (server_id, channel_id),
+        )
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save regex ignored channel: {e}")
+    finally:
+        conn.close()
 
 # SQLite - REMOVES regex ignored channel
 def remove_regex_ignored_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM regex_ignored_channels WHERE server_id = ? AND channel_id = ?",
-        (server_id, channel_id),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM regex_ignored_channels WHERE server_id = ? AND channel_id = ?",
+            (server_id, channel_id),
+        )
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to remove regex ignored channel: {e}")
+    finally:
+        conn.close()
 
 # SQLite - GETS regex ignored channel
 def get_regex_ignored_channels(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT channel_id FROM regex_ignored_channels WHERE server_id = ?", (server_id,)
-    )
-    ignored = {row[0] for row in cursor.fetchall()}
-    conn.close()
-    return ignored
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT channel_id FROM regex_ignored_channels WHERE server_id = ?", (server_id,)
+        )
+        ignored = {row[0] for row in cursor.fetchall()}
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to get regex ignored channels: {e}")
+    finally:
+        conn.close()
+        return ignored
 
 
 # --- Discord Setup ---
@@ -497,6 +561,12 @@ async def trading(interaction: discord.Interaction):
 async def setregex(interaction: discord.Interaction, pattern: str):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        return
+    
+    try:
+        re.compile(pattern) # validate regex pattern
+    except re.error:
+        await interaction.response.send_message("Invalid regex pattern.", ephemeral=True)
         return
 
     server_id = str(interaction.guild_id)
