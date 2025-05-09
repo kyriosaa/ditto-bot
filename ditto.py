@@ -7,6 +7,7 @@ import re
 
 from logging.handlers import RotatingFileHandler
 from discord.ext import tasks, commands
+from discord.ext.commands import cooldown, BucketType
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
@@ -286,7 +287,6 @@ def get_regex_ignored_channels(server_id):
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
-intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # --- Fetch Articles ---
@@ -525,6 +525,7 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
 
 # /update
 @bot.tree.command(name="update", description="Check for news updates")
+@cooldown(1, 60, BucketType.user)   # 1 use per 60 seconds
 async def update(interaction: discord.Interaction):
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
@@ -549,6 +550,7 @@ async def update(interaction: discord.Interaction):
 
 # /trading (manual warning message)
 @bot.tree.command(name="trading", description="Manual command to tell users how to access the trading channels")
+@cooldown(1, 60, BucketType.user)   # 1 use per 60 seconds
 async def trading(interaction: discord.Interaction):
     server_id = str(interaction.guild_id)
     await interaction.response.send_message(
