@@ -1,3 +1,5 @@
+# im gonna put everything in one file because its easier for me to dev on one device and just copy everything into my raspberry pi thats hosting the bot
+
 import logging
 import discord
 import requests
@@ -20,7 +22,7 @@ DB_FILE = "bot_data.db"
 
 # --- Logging setup ---
 log_file = "bot_activity.log"
-logger = logging.getLogger("ptcg-news")
+logger = logging.getLogger("dittologger")
 logger.setLevel(logging.INFO)
 handler = RotatingFileHandler(log_file, maxBytes=100 * 1024 * 1024, backupCount=100)
 handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -66,6 +68,8 @@ def setup_database():
     
     conn.commit()
     conn.close()
+
+    logger.info(f"Database successfully set up!")
 
 setup_database()
 
@@ -425,7 +429,7 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
 # --- Background Task ---
 @tasks.loop(hours=1)
 async def check_and_post_articles():
-    logger.info("Checking for new articles...")
+    logger.info("Running hourly check for new articles...")
     posted_links = load_posted_articles()
 
     conn = sqlite3.connect(DB_FILE)
@@ -521,7 +525,7 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
     await interaction.response.send_message(
         f"✅ Pocket updates will be posted in {channel.mention} and ping {role.mention}."
     )
-    logger.info(f"/setpocket command run on server {server_id}. Channel: {channel.id} | Role: {role.id}.")
+    logger.info(f"/setpocket command run on server {server_id}. | Channel: {channel.id} - Role: {role.id}.")
 
 # /update
 @bot.tree.command(name="update", description="Check for news updates")
@@ -548,6 +552,8 @@ async def update(interaction: discord.Interaction):
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
 
+    logger.info(f"/update command run on server {server_id}")
+
 # /trading (manual warning message)
 @bot.tree.command(name="trading", description="Manual command to tell users how to access the trading channels")
 @cooldown(1, 60, BucketType.user)   # 1 use per 60 seconds
@@ -556,6 +562,7 @@ async def trading(interaction: discord.Interaction):
     await interaction.response.send_message(
         "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
     )
+
     logger.info(f"/trading command run on server {server_id}.")
 
 # /setregex
@@ -575,7 +582,8 @@ async def setregex(interaction: discord.Interaction, pattern: str):
     save_regex_pattern(server_id, pattern)
 
     await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`")
-    logger.info(f"/setregex command run on server {server_id}. Pattern: {pattern}.")
+
+    logger.info(f"/setregex command run on server {server_id}. | Pattern: {pattern}.")
 
 # /removeregex
 @bot.tree.command(name="removeregex", description="Remove the regex pattern for word checking")
@@ -588,6 +596,7 @@ async def removeregex(interaction: discord.Interaction):
     remove_regex_pattern(server_id)
 
     await interaction.response.send_message("✅ Regex pattern removed.")
+
     logger.info(f"/removeregex command run on server {server_id}.")
 
 # /addignoredchannel
@@ -602,6 +611,8 @@ async def addignoredchannel(interaction: discord.Interaction, channel: discord.a
 
     await interaction.response.send_message(f"✅ Channel {channel.mention} has been added to the ignored list.")
 
+    logger.info(f"/addignoredchannel command run on server {server_id}. | Channel: {channel.mention}.")
+
 # /removeignoredchannel
 @bot.tree.command(name="removeignoredchannel", description="Remove a channel to be ignored by the regex check")
 async def removeignoredchannel(interaction: discord.Interaction, channel: discord.abc.GuildChannel):
@@ -613,6 +624,8 @@ async def removeignoredchannel(interaction: discord.Interaction, channel: discor
     remove_regex_ignored_channel(server_id, str(channel.id))
 
     await interaction.response.send_message(f"✅ Channel {channel.mention} has been removed from the ignored list.")
+
+    logger.info(f"/removeignoredchannel command run on server {server_id}. | Channel: {channel.mention}.")
 
 # /listignoredchannels
 @bot.tree.command(name="listignoredchannels", description="Lists all channels ignored by the regex check")
@@ -632,14 +645,16 @@ async def listignoredchannels(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("No channels are currently ignored.", ephemeral=True)
 
+    logger.info(f"/listignoredchannels command run on server {server_id}.")
+
 # --- Events ---
 # log in event
 @bot.event
 async def on_ready():
     await bot.tree.sync()
-    logger.info(f"Logged in as {bot.user}")
     if not check_and_post_articles.is_running():
         check_and_post_articles.start()
+    logger.info(f"Logged in as {bot.user}")
 
 # new server welcome event
 @bot.event
