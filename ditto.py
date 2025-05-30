@@ -95,9 +95,9 @@ def load_posted_articles():
         links = {row[0] for row in cursor.fetchall()}
     except sqlite3.Error as e:
         logger.error(f"Database error while trying to load articles: {e}")
+        return set()
     finally:
         conn.close()
-        return links
 
 # SQLite - SAVES the posting channel for PTCG articles
 def save_ptcg_channel(server_id, channel_id):
@@ -225,9 +225,9 @@ def get_regex_pattern(server_id):
         row = cursor.fetchone()
     except sqlite3.Error as e:
         logger.error(f"Database error while trying to get regex pattern: {e}")
+        return None
     finally:
         conn.close()
-        return row[0] if row else None
 
 # SQLite - REMOVES regex pattern
 def remove_regex_pattern(server_id):
@@ -282,10 +282,9 @@ def get_regex_ignored_channels(server_id):
         ignored = {row[0] for row in cursor.fetchall()}
     except sqlite3.Error as e:
         logger.error(f"Database error while trying to get regex ignored channels: {e}")
+        return set()
     finally:
         conn.close()
-        return ignored
-
 
 # --- Discord Setup ---
 intents = discord.Intents.default()
@@ -691,6 +690,9 @@ async def on_guild_join(guild):
 async def on_message(message):
     if message.author.bot:
         return  # ignore messages from other bots
+    
+    if not message.guild:
+        return
 
     server_id = str(message.guild.id)
     ignored_channels = get_regex_ignored_channels(server_id)
