@@ -5,7 +5,8 @@
 ## About
 
 - A custom Discord bot built with Python using ```discord.py```. Features include automated moderation, user interaction commands, and integration with external APIs. Designed to be modular, scalable, and easy to extend for custom server needs.
-- Hosted on personal Linux system
+- Currently being used in a community of over **32,000 members** and actively maintained.
+- Hosted on personal Linux system.
 
 ## Usage
 

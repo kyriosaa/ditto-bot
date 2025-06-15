@@ -666,8 +666,32 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     try:
+        # read the audit log to find who added the bot
+        async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=1):
+            if entry.target.id == bot.user.id:
+                inviter = entry.user
+                message = (
+                    f"Hey {inviter.name}! Here are some tips to get me set up in your server.\n\n"
+                    "__News Updates__\n"
+                    "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
+                    "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n"
+                    "**/update** - Check for news updates.\n\n"
+                    "__Regex__\n"
+                    "**/setregex <pattern>** - Set a regex pattern for word checking.\n"
+                    "**/removeregex** - Remove the regex pattern.\n"
+                    "**/addignoredchannel <channel>** - Add a channel to be ignored by the regex check.\n"
+                    "**/removeignoredchannel <channel>** - Remove a channel to be ignored by the regex check.\n"
+                    "**/listignoredchannels** - Lists all channels ignored by the regex check.\n"
+                    "**/trading** - Manual command to tell users how to access the trading channels.\n\n"
+                    "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
+                )
+                await inviter.send(message)
+                logger.info(f"Bot added to new server of ID {guild.id} by {inviter.name}")
+                logger.info(f"Sent welcome message to {inviter.name} who added the bot to {guild.name}.")
+                return
+        
+        # if audit log check fails just send the msg to the owner
         owner = guild.owner
-
         if owner:
             message = (
                 f"Hey {owner.name}! Here are some tips to get me set up in your server.\n\n"
@@ -685,8 +709,7 @@ async def on_guild_join(guild):
                 "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
             )
             await owner.send(message)
-            logger.info(f"Bot added to new server of ID {guild.id}")
-            logger.info(f"Sent welcome message to the owner of {guild.name}.")
+            logger.info(f"Bot added to new server of ID {guild.id} - sent message to owner as fallback")
         else:
             logger.warning(f"Could not find the owner for the guild {guild.name}.")
     except Exception as e:
