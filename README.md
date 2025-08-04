@@ -1,14 +1,16 @@
-<img src='./images/ditto_banner.png' width='100%'>
+<img src='./images/ditto_cover.png' width='100%'>
 
 # Ditto Bot
 
+[![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.com/)
+[![discord.py](https://img.shields.io/badge/discord.py-7289DA?style=flat&logo=discord&logoColor=white)](https://discordpy.readthedocs.io/)
+
+A custom Discord bot built with Python using ```discord.py```. Features include automated moderation, user interaction commands, and integration with external APIs. Designed to be modular, scalable, and easy to extend for custom server needs.
+
+Currently being used in a community of over **32,000 members** and actively maintained.
+
 ✨ [Invite Ditto to your server](https://discord.com/oauth2/authorize?client_id=1318567932661338183&permissions=2147502112&integration_type=0&scope=bot) ✨
-
-## About
-
-- A custom Discord bot built with Python using ```discord.py```. Features include automated moderation, user interaction commands, and integration with external APIs. Designed to be modular, scalable, and easy to extend for custom server needs.
-- Currently being used in a community of over **32,000 members** and actively maintained.
-- Hosted on personal Linux system.
 
 ## Usage
 
