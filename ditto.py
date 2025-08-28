@@ -371,19 +371,11 @@ def fetch_pocket_articles(url):
         return []
 
     soup = BeautifulSoup(response.content, 'html.parser')
-
-    if 'articles' in url:
-        title_tag_name = 'h3'
-        article_class = 'article-preview'
-    else:
-        title_tag_name = 'h2'
-        article_class = 'featured-article-preview'
-
-    articles = soup.find_all('article', class_=article_class)
+    articles = soup.find_all('article', class_=lambda value: value and "block" in value)
     fetched_articles = []
 
     for article in articles:
-        title_tag = article.find(title_tag_name)
+        title_tag = article.find('h2')
         link_tag = article.find('a')
         image_tag = article.find('img')
 
@@ -417,11 +409,9 @@ def fetch_pocket_first_paragraph(article_url):
     if nested_div:
         nested_div = nested_div.find('div') 
         if nested_div:
-            nested_div = nested_div.find('div')  
-            if nested_div:
-                first_paragraph = nested_div.find('p')  
-                if first_paragraph:
-                    return first_paragraph.text.strip()
+            first_paragraph = nested_div.find('p')  
+            if first_paragraph:
+                return first_paragraph.text.strip()
     
     logger.warning(f"No <p> tag found in the article {article_url}.")
     return "No content available."
