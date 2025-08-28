@@ -367,31 +367,36 @@ def fetch_pocket_articles(url):
     try:
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            logger.error(f"Error fetching the webpage: {url}. Status code: {response.status_code}")
+            logger.error(f"Error fetching Pocket articles: Status {response.status_code}")
             return []
     except requests.RequestException as e:
-        logger.error(f"Request error while fetching {url}: {e}")
+        logger.error(f"Request error fetching Pocket articles: {e}")
         return []
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    articles = soup.find_all('article', class_='featured-article-preview')
     fetched_articles = []
-
-    for article in articles:
-        title_tag = article.find('h2', class_='featured-article-preview__title')
-        link_tag = article.find('a', class_='featured-article-preview__poster')
-        image_tag = link_tag.find('img') if link_tag else None
+    
+    for article in soup.select("article[class*='preview']"):
+        title_tag = article.select_one("h2[class*='title']")
+        link_tag = article.select_one("a[class*='poster']")
+        image_tag = article.select_one("img")
 
         if title_tag and link_tag and image_tag:
             title = title_tag.text.strip()
-            link = link_tag['href']
-            full_link = f"https://www.pokemon-zone.com{link}" if link.startswith("/") else link
+            
+            link = link_tag.get('href')
+            if not link:
+                continue 
+            full_link = f"https://www.pokemon-zone.com{link}" if link.startswith('/') else link
+
             image_src = image_tag.get('src')
-            if image_src:
-                full_image_url = image_src
-                if image_src.startswith('/'):
-                    full_image_url = f"https://www.pokemon-zone.com{image_src}"
-                fetched_articles.append((title, full_link, full_image_url))
+            if not image_src:
+                continue 
+            full_image_url = image_src
+            if image_src.startswith('/'):
+                full_image_url = f"https://www.pokemon-zone.com{image_src}"
+            
+            fetched_articles.append((title, full_link, full_image_url))
 
     logger.info(f"Fetched {len(fetched_articles)} articles from {url}.")
     return fetched_articles
