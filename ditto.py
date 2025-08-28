@@ -408,25 +408,20 @@ def fetch_pocket_first_paragraph(article_url):
         return ""
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Try to find the main content area first
-    main_content = soup.find('main', class_='global-content')
-    if not main_content:
-        logger.warning(f"No main content area found in the article {article_url}.")
+    first_article = soup.find('article')
+    if not first_article:
+        logger.warning(f"No <article> tag found in the article {article_url}.")
         return "No content available."
 
-    # Navigate through nested divs to find the content
-    content_div = main_content.find('div', class_='container')
-    if content_div:
-        content_div = content_div.find('div', class_='global-content__content')
-        if content_div:
-            content_div = content_div.find('div', class_='p-home')
-            if content_div:
-                content_div = content_div.find('div', class_='content-box')
-                if content_div:
-                    first_paragraph = content_div.find('p')
-                    if first_paragraph:
-                        return first_paragraph.text.strip()
+    nested_div = first_article.find('div')
+    if nested_div:
+        nested_div = nested_div.find('div') 
+        if nested_div:
+            nested_div = nested_div.find('div')  
+            if nested_div:
+                first_paragraph = nested_div.find('p')  
+                if first_paragraph:
+                    return first_paragraph.text.strip()
     
     logger.warning(f"No <p> tag found in the article {article_url}.")
     return "No content available."
