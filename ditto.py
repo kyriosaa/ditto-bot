@@ -371,13 +371,13 @@ def fetch_pocket_articles(url):
         return []
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    articles = soup.find_all('article', class_=lambda value: value and "block" in value)
+    articles = soup.find_all('article', class_='featured-article-preview')
     fetched_articles = []
 
     for article in articles:
-        title_tag = article.find('h2')
-        link_tag = article.find('a')
-        image_tag = article.find('img')
+        title_tag = article.find('h2', class_='featured-article-preview__title')
+        link_tag = article.find('a', class_='featured-article-preview__poster')
+        image_tag = link_tag.find('img') if link_tag else None
 
         if title_tag and link_tag and image_tag:
             title = title_tag.text.strip()
@@ -405,13 +405,9 @@ def fetch_pocket_first_paragraph(article_url):
         logger.warning(f"No <article> tag found in the article {article_url}.")
         return "No content available."
 
-    nested_div = first_article.find('div')
-    if nested_div:
-        nested_div = nested_div.find('div') 
-        if nested_div:
-            first_paragraph = nested_div.find('p')  
-            if first_paragraph:
-                return first_paragraph.text.strip()
+    first_paragraph = first_article.find('p')  
+    if first_paragraph:
+        return first_paragraph.text.strip()
     
     logger.warning(f"No <p> tag found in the article {article_url}.")
     return "No content available."
@@ -446,61 +442,54 @@ async def check_and_post_articles():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    # PTCG
+    # --- PTCG ---
     cursor.execute("SELECT server_id, channel_id FROM ptcg_channels")
     ptcg_channels = cursor.fetchall()
 
-    ptcg_articles = []
+    new_ptcg_articles = []
     for url in PTCG_URLS:
         all_articles = fetch_ptcg_articles(url)
+        for article_data in all_articles:
+            if article_data[1] not in posted_links:
+                new_ptcg_articles.append(article_data)
+                posted_links.add(article_data[1])
 
-        for title, link, image_url in all_articles:
-            if link not in posted_links:
-                ptcg_articles.append((title, link, image_url))
-
-    # Post to all configured channels
-    for server_id, channel_id in ptcg_channels:
-        channel = bot.get_channel(int(channel_id))
-        if not channel:
-            logger.error(f"Channel {channel_id} not found for server {server_id}.")
-            continue
-
-        if ptcg_articles:
+    if new_ptcg_articles and ptcg_channels:
+        for server_id, channel_id in ptcg_channels:
+            channel = bot.get_channel(int(channel_id))
+            if not channel:
+                logger.error(f"Channel {channel_id} not found for server {server_id}.")
+                continue
+            
             role_id = get_ptcg_role(server_id)
             role_mention = f"<@&{role_id}>" if role_id else None
-            await post_articles(channel, ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
+            await post_articles(channel, new_ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
     
-    posted_links.update({link for _, link, _ in ptcg_articles})
-    for link in {link for _, link, _ in ptcg_articles}:
-        save_posted_article(link)
-    
-    # POCKET
+    # --- POCKET ---
     cursor.execute("SELECT server_id, channel_id FROM pocket_channels")
     pocket_channels = cursor.fetchall()
 
-    pocket_articles = []
+    new_pocket_articles = []
     for url in POCKET_URLS:
         all_articles = fetch_pocket_articles(url)
-        for title, link, image_url in all_articles:
-            if link not in posted_links:
-                pocket_articles.append((title, link, image_url))
+        for article_data in all_articles:
+            if article_data[1] not in posted_links:
+                new_pocket_articles.append(article_data)
+                posted_links.add(article_data[1])
 
-    for server_id, channel_id in pocket_channels:
-        channel = bot.get_channel(int(channel_id))
-        if not channel:
-            logger.error(f"Pocket channel {channel_id} not found for server {server_id}.")
-            continue
-        if pocket_articles:
+    if new_pocket_articles and pocket_channels:
+        for server_id, channel_id in pocket_channels:
+            channel = bot.get_channel(int(channel_id))
+            if not channel:
+                logger.error(f"Pocket channel {channel_id} not found for server {server_id}.")
+                continue
+            
             role_id = get_pocket_role(server_id) 
             role_mention = f"<@&{role_id}>" if role_id else None
-            await post_articles(channel, pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_pocket_first_paragraph)
-
-    posted_links.update({link for _, link, _ in pocket_articles})
-    for link in {link for _, link, _ in pocket_articles}:
-        save_posted_article(link)
-        posted_links.add(link)
+            await post_articles(channel, new_pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_pocket_first_paragraph)
 
     conn.close()
+    logger.info("Finished hourly check.")
 
 # --- Slash Commands ---
 # /setptcg
