@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 PTCG_URLS = ["https://www.pokebeach.com/"]
-POCKET_URLS = ["https://www.pokemon-zone.com/articles/", "https://www.pokemon-zone.com/events/"]
+POCKET_URLS = ["https://www.pokemon-zone.com/"]
 DB_FILE = "bot_data.db"
 
 # --- Logging setup ---
@@ -408,8 +408,28 @@ def fetch_pocket_first_paragraph(article_url):
         return ""
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    first_paragraph = soup.find('p')
-    return first_paragraph.text.strip() if first_paragraph else ""
+    
+    # Try to find the main content area first
+    main_content = soup.find('main', class_='global-content')
+    if not main_content:
+        logger.warning(f"No main content area found in the article {article_url}.")
+        return "No content available."
+
+    # Navigate through nested divs to find the content
+    content_div = main_content.find('div', class_='container')
+    if content_div:
+        content_div = content_div.find('div', class_='global-content__content')
+        if content_div:
+            content_div = content_div.find('div', class_='p-home')
+            if content_div:
+                content_div = content_div.find('div', class_='content-box')
+                if content_div:
+                    first_paragraph = content_div.find('p')
+                    if first_paragraph:
+                        return first_paragraph.text.strip()
+    
+    logger.warning(f"No <p> tag found in the article {article_url}.")
+    return "No content available."
 
 # --- Post Articles ---
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
@@ -553,7 +573,9 @@ async def update(interaction: discord.Interaction):
     ptcg_articles = [a for url in PTCG_URLS for a in fetch_ptcg_articles(url) if a[1] not in load_posted_articles()]
     
     if ptcg_articles:
-        await post_articles(channel, ptcg_articles)
+        role_id = get_ptcg_role(server_id)
+        role_mention = f"<@&{role_id}>" if role_id else None
+        await post_articles(channel, ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
         await interaction.followup.send(f"Posted {len(ptcg_articles)} articles. ✅", ephemeral=True)
     else:
         await interaction.followup.send("No new articles found. ✅", ephemeral=True)
