@@ -361,8 +361,11 @@ def fetch_ptcg_first_paragraph(article_url):
 
 # POCKET
 def fetch_pocket_articles(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         if response.status_code != 200:
             logger.error(f"Error fetching the webpage: {url}. Status code: {response.status_code}")
             return []
@@ -383,8 +386,12 @@ def fetch_pocket_articles(url):
             title = title_tag.text.strip()
             link = link_tag['href']
             full_link = f"https://www.pokemon-zone.com{link}" if link.startswith("/") else link
-            image_url = image_tag['src']
-            fetched_articles.append((title, full_link, image_url))
+            image_src = image_tag.get('src')
+            if image_src:
+                full_image_url = image_src
+                if image_src.startswith('/'):
+                    full_image_url = f"https://www.pokemon-zone.com{image_src}"
+                fetched_articles.append((title, full_link, full_image_url))
 
     logger.info(f"Fetched {len(fetched_articles)} articles from {url}.")
     return fetched_articles
