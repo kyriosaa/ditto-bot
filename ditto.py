@@ -2,12 +2,13 @@
 
 import discord
 import io
+import os
+import re
 import aiohttp
 import asyncio
 import logging
-import os
 import sqlite3
-import re
+import cfscrape
 
 from logging.handlers import RotatingFileHandler
 from discord.ext import tasks, commands
@@ -320,19 +321,21 @@ async def fetch_ptcg_articles(ptcg_url):
         return []
 
     soup = BeautifulSoup(body, 'html.parser')
+
     articles = soup.find_all('article', class_=lambda value: value and "block" in value)
     fetched_articles = []
-
     for article in articles:
         title_tag = article.find('h2')
         link_tag = article.find('a')
-        image_tag = article.find('img')
+        image_tag = article.find('img') if link_tag else None
 
         if title_tag and link_tag and image_tag:
             title = title_tag.text.strip()
             link = link_tag.get('href')
+            if not link:
+                continue
             full_link = f"https://www.pokebeach.com{link}" if link.startswith("/") else link
-            image_url = image_tag.get('src')
+            image_url = image_tag.get('src') or ""
             fetched_articles.append((title, full_link, image_url))
 
     logger.info(f"Fetched {len(fetched_articles)} articles from {ptcg_url}.")
@@ -378,22 +381,26 @@ async def fetch_pocket_articles(pocket_url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
     }
+
+    def _sync_get(url):
+        sc = cfscrape.create_scraper()
+        r = sc.get(url, headers=headers, timeout=15)
+        return r.status_code, r.text
+
     try:
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(pocket_url, timeout=15) as response:
-                status = response.status
-                if status != 200:
-                    logger.error(f"Error fetching the webpage: {pocket_url}. Status code: {status}")
-                    return []
-                body = await response.text()
-    except aiohttp.ClientError as e:
+        status, body = await asyncio.to_thread(_sync_get, pocket_url)
+        logger.info(f"fetch_pocket_articles: GET {pocket_url} -> {status} (len={len(body) if body else 0})")
+        if status != 200:
+            logger.error(f"Error fetching the webpage: {pocket_url}. Status code: {status}")
+            return []
+    except Exception as e:
         logger.error(f"Request error while fetching {pocket_url}: {e}")
         return []
 
     soup = BeautifulSoup(body, 'html.parser')
+
     articles = soup.find_all('article', class_='featured-article-preview')
     fetched_articles = []
-
     for article in articles:
         title_tag = article.find('h2', class_='featured-article-preview__title')
         link_tag = article.find('a', class_='featured-article-preview__poster')
@@ -402,8 +409,10 @@ async def fetch_pocket_articles(pocket_url):
         if title_tag and link_tag and image_tag:
             title = title_tag.text.strip()
             link = link_tag.get('href')
+            if not link: 
+                continue
             full_link = f"https://www.pokemon-zone.com{link}" if link.startswith("/") else link
-            image_url = image_tag.get('src')
+            image_url = image_tag.get('src') or ""
             fetched_articles.append((title, full_link, image_url))
 
     logger.info(f"Fetched {len(fetched_articles)} articles from {pocket_url}.")
@@ -413,16 +422,20 @@ async def fetch_pocket_first_paragraph(pocket_url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
     }
+
+    def _sync_get(url):
+        sc = cfscrape.create_scraper()
+        r = sc.get(url, headers=headers, timeout=15)
+        return r.status_code, r.text
+
     try:
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(pocket_url, timeout=15) as response:
-                status = response.status
-                if status != 200:
-                    logger.error(f"Error fetching the webpage: {pocket_url}. Status code: {status}")
-                    return ""
-                body = await response.text()
-    except aiohttp.ClientError as e:
-        logger.error(f"Request error while fetching {pocket_url}: {e}")
+        status, body = await asyncio.to_thread(_sync_get, pocket_url)
+        logger.info(f"fetch_pocket_first_paragraph: GET {pocket_url} -> {status} (len={len(body) if body else 0})")
+        if status != 200:
+            logger.error(f"Error fetching the article {pocket_url}. Status code: {status}")
+            return ""
+    except Exception as e:
+        logger.error(f"Request error while fetching {pocket_url} via cfscrape: {e}")
         return ""
 
     soup = BeautifulSoup(body, 'html.parser')
