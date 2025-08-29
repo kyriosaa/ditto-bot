@@ -8,7 +8,7 @@ import aiohttp
 import asyncio
 import logging
 import sqlite3
-import cfscrape
+import cloudscraper
 
 from logging.handlers import RotatingFileHandler
 from discord.ext import tasks, commands
@@ -16,14 +16,14 @@ from discord.ext.commands import cooldown, BucketType
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-# --- Bot config ---
+# Bot config
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 PTCG_URLS = ["https://www.pokebeach.com/"]
 POCKET_URLS = ["https://www.pokemon-zone.com/"]
 DB_FILE = "bot_data.db"
 
-# --- Logging setup ---
+# Logging setup
 log_file = "bot_activity.log"
 logger = logging.getLogger("dittologger")
 logger.setLevel(logging.INFO)
@@ -31,7 +31,7 @@ handler = RotatingFileHandler(log_file, maxBytes=100 * 1024 * 1024, backupCount=
 handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
 
-# --- SQLite Setup ---
+# SQLite setup
 def setup_database():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -73,10 +73,9 @@ def setup_database():
     conn.close()
 
     logger.info(f"Database successfully set up!")
-
 setup_database()
 
-# --- SQLite Functions ---
+# SQLite functions
 # SQLite - SAVES articles to prevent future repeating articles
 def save_posted_article(link):
     conn = sqlite3.connect(DB_FILE)
@@ -296,17 +295,18 @@ def get_regex_ignored_channels(server_id):
     finally:
         conn.close()
 
-# --- Discord Setup ---
+# Discord setup
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# --- Fetch Articles ---
-# PTCG
+# Fetch PTCG articles
 async def fetch_ptcg_articles(ptcg_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://www.google.com/'
     }
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
@@ -343,7 +343,9 @@ async def fetch_ptcg_articles(ptcg_url):
 
 async def fetch_ptcg_first_paragraph(ptcg_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://www.google.com/'
     }
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
@@ -358,12 +360,12 @@ async def fetch_ptcg_first_paragraph(ptcg_url):
         return ""
     
     soup = BeautifulSoup(body, 'html.parser')
-    first_article = soup.find('article')
-    if not first_article:
+    article_body = soup.find('article')
+    if not article_body:
         logger.warning(f"No <article> tag found in the article {ptcg_url}.")
         return "No content available."
 
-    nested_div = first_article.find('div')
+    nested_div = article_body.find('div')
     if nested_div:
         nested_div = nested_div.find('div') 
         if nested_div:
@@ -376,20 +378,26 @@ async def fetch_ptcg_first_paragraph(ptcg_url):
     logger.warning(f"No <p> tag found in the article {ptcg_url}.")
     return "No content available."
 
-# POCKET
+# Fetch POCKET articles
 async def fetch_pocket_articles(pocket_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://www.google.com/'
     }
 
     def _sync_get(url):
-        sc = cfscrape.create_scraper()
+        sc = cloudscraper.create_scraper()
         r = sc.get(url, headers=headers, timeout=15)
         return r.status_code, r.text
 
     try:
         status, body = await asyncio.to_thread(_sync_get, pocket_url)
         logger.info(f"fetch_pocket_articles: GET {pocket_url} -> {status} (len={len(body) if body else 0})")
+        # 403 check bcs this website is playing games
+        if status == 403:
+            logger.error(f"403 received; response snippet: {body[:1000]!r}")
+            return []
         if status != 200:
             logger.error(f"Error fetching the webpage: {pocket_url}. Status code: {status}")
             return []
@@ -420,11 +428,13 @@ async def fetch_pocket_articles(pocket_url):
 
 async def fetch_pocket_first_paragraph(pocket_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Referer': 'https://www.google.com/'
     }
 
     def _sync_get(url):
-        sc = cfscrape.create_scraper()
+        sc = cloudscraper.create_scraper()
         r = sc.get(url, headers=headers, timeout=15)
         return r.status_code, r.text
 
@@ -435,23 +445,23 @@ async def fetch_pocket_first_paragraph(pocket_url):
             logger.error(f"Error fetching the article {pocket_url}. Status code: {status}")
             return ""
     except Exception as e:
-        logger.error(f"Request error while fetching {pocket_url} via cfscrape: {e}")
+        logger.error(f"Request error while fetching {pocket_url} via cloudscraper: {e}")
         return ""
 
     soup = BeautifulSoup(body, 'html.parser')
-    first_article = soup.find('article')
-    if not first_article:
+    article_body = soup.find('article')
+    if not article_body:
         logger.warning(f"No <article> tag found in the article {pocket_url}.")
-        return "No content available."
+        return "" # no content
 
-    first_paragraph = first_article.find('p')  
+    first_paragraph = article_body.find('p')  
     if first_paragraph:
         return first_paragraph.text.strip()
     
     logger.warning(f"No <p> tag found in the article {pocket_url}.")
     return "No content available."
 
-# --- Post Articles ---
+# Post articles
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
     for title, link, image_url in articles:
         first_paragraph = ""
@@ -482,7 +492,7 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
         except Exception as e:
             logger.error(f"Failed to send message in channel {channel.id}: {e}")
 
-# --- Background Task ---
+# Background task
 @tasks.loop(hours=1)
 async def check_and_post_articles():
     logger.info("Running hourly check for new articles...")
@@ -540,7 +550,7 @@ async def check_and_post_articles():
     conn.close()
     logger.info("Finished hourly check.")
 
-# --- Slash Commands ---
+# Slash commands
 # /setptcg
 @bot.tree.command(name="setptcg", description="Set the channel and role for PTCG updates")
 async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
@@ -703,36 +713,7 @@ async def listignoredchannels(interaction: discord.Interaction):
 
     logger.info(f"/listignoredchannels command run on server {server_id}.")
 
-# temp command bcs ts is crazy bro
-@bot.tree.command(name="debugpocket", description="Dev: show what fetch_pocket_articles finds and DB state")
-async def debugpocket(interaction: discord.Interaction):
-    # require an admin-ish user so this isn't abused
-    if not interaction.user.guild_permissions.manage_guild:
-        await interaction.response.send_message("You must have Manage Server to use this.", ephemeral=True)
-        return
-
-    await interaction.response.defer(ephemeral=True)
-    posted = load_posted_articles()
-    out_lines = []
-    for url in POCKET_URLS:
-        try:
-            articles = await fetch_pocket_articles(url)
-            out_lines.append(f"{url} -> {len(articles)} articles found")
-            for i, (title, link, image) in enumerate(articles[:5]):
-                out_lines.append(f"{i+1}. title={title[:80]!s}")
-                out_lines.append(f"   link={link}")
-                out_lines.append(f"   posted_in_db={'YES' if link in posted else 'NO'}")
-        except Exception as e:
-            out_lines.append(f"{url} -> exception: {e}")
-
-    # if result is long, send as a file
-    message = "\n".join(out_lines) or "no output"
-    if len(message) > 1900:
-        await interaction.followup.send(file=discord.File(fp=io.BytesIO(message.encode('utf-8')), filename="debug_pocket.txt"), ephemeral=True)
-    else:
-        await interaction.followup.send(message, ephemeral=True)
-
-# --- Events ---
+# Events
 # log in event
 @bot.event
 async def on_ready():
@@ -822,6 +803,5 @@ async def on_message(message):
         logger.info(f"Regex match triggered at server {server_id}.")
 
     await bot.process_commands(message)
-
 
 bot.run(TOKEN)
