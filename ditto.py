@@ -1,8 +1,10 @@
 # im gonna put everything in one file because its easier for me to dev on one device and just copy everything into my raspberry pi thats hosting the bot
 
-import logging
 import discord
-import requests
+import io
+import aiohttp
+import asyncio
+import logging
 import os
 import sqlite3
 import re
@@ -301,17 +303,23 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # --- Fetch Articles ---
 # PTCG
-def fetch_ptcg_articles(url):
+async def fetch_ptcg_articles(ptcg_url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+    }
     try:
-        response = requests.get(url)
-        if response.status_code != 200:
-            logger.error(f"Error fetching the webpage: {url}. Status code: {response.status_code}")
-            return []
-    except requests.RequestException as e:
-        logger.error(f"Request error while fetching {url}: {e}")
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(ptcg_url, timeout=15) as response:
+                status = response.status
+                if status != 200:
+                    logger.error(f"Error fetching the webpage: {ptcg_url}. Status code: {status}")
+                    return []
+                body = await response.text()
+    except aiohttp.ClientError as e:
+        logger.error(f"Request error while fetching {ptcg_url}: {e}")
         return []
 
-    soup = BeautifulSoup(response.content, 'html.parser')
+    soup = BeautifulSoup(body, 'html.parser')
     articles = soup.find_all('article', class_=lambda value: value and "block" in value)
     fetched_articles = []
 
@@ -322,28 +330,34 @@ def fetch_ptcg_articles(url):
 
         if title_tag and link_tag and image_tag:
             title = title_tag.text.strip()
-            link = link_tag['href']
+            link = link_tag.get('href')
             full_link = f"https://www.pokebeach.com{link}" if link.startswith("/") else link
-            image_url = image_tag['src']
+            image_url = image_tag.get('src')
             fetched_articles.append((title, full_link, image_url))
 
-    logger.info(f"Fetched {len(fetched_articles)} articles from {url}.")
+    logger.info(f"Fetched {len(fetched_articles)} articles from {ptcg_url}.")
     return fetched_articles
 
-def fetch_ptcg_first_paragraph(article_url):
+async def fetch_ptcg_first_paragraph(ptcg_url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+    }
     try:
-        response = requests.get(article_url)
-        if response.status_code != 200:
-            logger.error(f"Error fetching the article {article_url}. Status code: {response.status_code}")
-            return ""
-    except requests.RequestException as e:
-        logger.error(f"Request error while fetching {article_url}: {e}")
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(ptcg_url, timeout=15) as response:
+                status = response.status
+                if status != 200:
+                    logger.error(f"Error fetching the webpage: {ptcg_url}. Status code: {status}")
+                    return ""
+                body = await response.text()
+    except aiohttp.ClientError as e:
+        logger.error(f"Request error while fetching {ptcg_url}: {e}")
         return ""
     
-    soup = BeautifulSoup(response.content, 'html.parser')
+    soup = BeautifulSoup(body, 'html.parser')
     first_article = soup.find('article')
     if not first_article:
-        logger.warning(f"No <article> tag found in the article {article_url}.")
+        logger.warning(f"No <article> tag found in the article {ptcg_url}.")
         return "No content available."
 
     nested_div = first_article.find('div')
@@ -356,80 +370,90 @@ def fetch_ptcg_first_paragraph(article_url):
                 if first_paragraph:
                     return first_paragraph.text.strip()
     
-    logger.warning(f"No <p> tag found in the article {article_url}.")
+    logger.warning(f"No <p> tag found in the article {ptcg_url}.")
     return "No content available."
 
 # POCKET
-def fetch_pocket_articles(url):
+async def fetch_pocket_articles(pocket_url):
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
     }
     try:
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            logger.error(f"Error fetching Pocket articles: Status {response.status_code}")
-            return []
-    except requests.RequestException as e:
-        logger.error(f"Request error fetching Pocket articles: {e}")
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(pocket_url, timeout=15) as response:
+                status = response.status
+                if status != 200:
+                    logger.error(f"Error fetching the webpage: {pocket_url}. Status code: {status}")
+                    return []
+                body = await response.text()
+    except aiohttp.ClientError as e:
+        logger.error(f"Request error while fetching {pocket_url}: {e}")
         return []
 
-    soup = BeautifulSoup(response.content, 'html.parser')
+    soup = BeautifulSoup(body, 'html.parser')
+    articles = soup.find_all('article', class_='featured-article-preview')
     fetched_articles = []
-    
-    for article in soup.select("article[class*='preview']"):
-        title_tag = article.select_one("h2[class*='title']")
-        link_tag = article.select_one("a[class*='poster']")
-        image_tag = article.select_one("img")
+
+    for article in articles:
+        title_tag = article.find('h2', class_='featured-article-preview__title')
+        link_tag = article.find('a', class_='featured-article-preview__poster')
+        image_tag = link_tag.find('img') if link_tag else None
 
         if title_tag and link_tag and image_tag:
             title = title_tag.text.strip()
-            
             link = link_tag.get('href')
-            if not link:
-                continue 
-            full_link = f"https://www.pokemon-zone.com{link}" if link.startswith('/') else link
+            full_link = f"https://www.pokemon-zone.com{link}" if link.startswith("/") else link
+            image_url = image_tag.get('src')
+            fetched_articles.append((title, full_link, image_url))
 
-            image_src = image_tag.get('src')
-            if not image_src:
-                continue 
-            full_image_url = image_src
-            if image_src.startswith('/'):
-                full_image_url = f"https://www.pokemon-zone.com{image_src}"
-            
-            fetched_articles.append((title, full_link, full_image_url))
-
-    logger.info(f"Fetched {len(fetched_articles)} articles from {url}.")
+    logger.info(f"Fetched {len(fetched_articles)} articles from {pocket_url}.")
     return fetched_articles
 
-def fetch_pocket_first_paragraph(article_url):
+async def fetch_pocket_first_paragraph(pocket_url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36'
+    }
     try:
-        response = requests.get(article_url)
-        if response.status_code != 200:
-            logger.error(f"Error fetching the article {article_url}. Status code: {response.status_code}")
-            return ""
-    except requests.RequestException as e:
-        logger.error(f"Request error while fetching {article_url}: {e}")
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(pocket_url, timeout=15) as response:
+                status = response.status
+                if status != 200:
+                    logger.error(f"Error fetching the webpage: {pocket_url}. Status code: {status}")
+                    return ""
+                body = await response.text()
+    except aiohttp.ClientError as e:
+        logger.error(f"Request error while fetching {pocket_url}: {e}")
         return ""
 
-    soup = BeautifulSoup(response.content, 'html.parser')
+    soup = BeautifulSoup(body, 'html.parser')
     first_article = soup.find('article')
     if not first_article:
-        logger.warning(f"No <article> tag found in the article {article_url}.")
+        logger.warning(f"No <article> tag found in the article {pocket_url}.")
         return "No content available."
 
     first_paragraph = first_article.find('p')  
     if first_paragraph:
         return first_paragraph.text.strip()
     
-    logger.warning(f"No <p> tag found in the article {article_url}.")
+    logger.warning(f"No <p> tag found in the article {pocket_url}.")
     return "No content available."
 
 # --- Post Articles ---
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
     for title, link, image_url in articles:
-        first_paragraph = paragraph_fetcher(link) if paragraph_fetcher else ""
-        description = f"{first_paragraph}\n\nRead more at {link}"
+        first_paragraph = ""
+        if paragraph_fetcher:
+            try:
+                result = paragraph_fetcher(link)
+                if asyncio.iscoroutine(result):
+                    first_paragraph = await result
+                else:
+                    first_paragraph = result
+            except Exception as e:
+                logger.error(f"Error fetching paragraph for {link}: {e}")
+                first_paragraph = ""
 
+        description = f"{first_paragraph}\n\nRead more at {link}"
         embed = discord.Embed(title=title, url=link, description=description)
         embed.set_image(url=image_url)
 
@@ -440,7 +464,7 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
                     allowed_mentions=discord.AllowedMentions(roles=True)
                 )
             await channel.send(embed=embed)
-            save_posted_article(link)
+            await asyncio.to_thread(save_posted_article, link)
             logger.info(f"Posted article: {title} - {link}")
         except Exception as e:
             logger.error(f"Failed to send message in channel {channel.id}: {e}")
@@ -449,18 +473,18 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
 @tasks.loop(hours=1)
 async def check_and_post_articles():
     logger.info("Running hourly check for new articles...")
-    posted_links = load_posted_articles()
+    posted_links = await asyncio.to_thread(load_posted_articles)
 
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    # --- PTCG ---
+    # PTCG
     cursor.execute("SELECT server_id, channel_id FROM ptcg_channels")
     ptcg_channels = cursor.fetchall()
 
     new_ptcg_articles = []
     for url in PTCG_URLS:
-        all_articles = fetch_ptcg_articles(url)
+        all_articles = await fetch_ptcg_articles(url)
         for article_data in all_articles:
             if article_data[1] not in posted_links:
                 new_ptcg_articles.append(article_data)
@@ -477,13 +501,13 @@ async def check_and_post_articles():
             role_mention = f"<@&{role_id}>" if role_id else None
             await post_articles(channel, new_ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
     
-    # --- POCKET ---
+    # POCKET
     cursor.execute("SELECT server_id, channel_id FROM pocket_channels")
     pocket_channels = cursor.fetchall()
 
     new_pocket_articles = []
     for url in POCKET_URLS:
-        all_articles = fetch_pocket_articles(url)
+        all_articles = await fetch_pocket_articles(url)
         for article_data in all_articles:
             if article_data[1] not in posted_links:
                 new_pocket_articles.append(article_data)
@@ -541,7 +565,6 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
 
 # /update
 @bot.tree.command(name="update", description="Check for news updates")
-@cooldown(1, 60, BucketType.user)   # 1 use per 60 seconds
 async def update(interaction: discord.Interaction):
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
@@ -556,8 +579,14 @@ async def update(interaction: discord.Interaction):
         await interaction.followup.send("Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
         return
 
-    ptcg_articles = [a for url in PTCG_URLS for a in fetch_ptcg_articles(url) if a[1] not in load_posted_articles()]
-    
+    ptcg_articles = []
+    posted = load_posted_articles()
+    for url in PTCG_URLS:
+        articles = await fetch_ptcg_articles(url)
+        for a in articles:
+            if a[1] not in posted:
+                ptcg_articles.append(a)
+
     if ptcg_articles:
         role_id = get_ptcg_role(server_id)
         role_mention = f"<@&{role_id}>" if role_id else None
@@ -660,6 +689,35 @@ async def listignoredchannels(interaction: discord.Interaction):
         await interaction.response.send_message("No channels are currently ignored.", ephemeral=True)
 
     logger.info(f"/listignoredchannels command run on server {server_id}.")
+
+# temp command bcs ts is crazy bro
+@bot.tree.command(name="debugpocket", description="Dev: show what fetch_pocket_articles finds and DB state")
+async def debugpocket(interaction: discord.Interaction):
+    # require an admin-ish user so this isn't abused
+    if not interaction.user.guild_permissions.manage_guild:
+        await interaction.response.send_message("You must have Manage Server to use this.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+    posted = load_posted_articles()
+    out_lines = []
+    for url in POCKET_URLS:
+        try:
+            articles = await fetch_pocket_articles(url)
+            out_lines.append(f"{url} -> {len(articles)} articles found")
+            for i, (title, link, image) in enumerate(articles[:5]):
+                out_lines.append(f"{i+1}. title={title[:80]!s}")
+                out_lines.append(f"   link={link}")
+                out_lines.append(f"   posted_in_db={'YES' if link in posted else 'NO'}")
+        except Exception as e:
+            out_lines.append(f"{url} -> exception: {e}")
+
+    # if result is long, send as a file
+    message = "\n".join(out_lines) or "no output"
+    if len(message) > 1900:
+        await interaction.followup.send(file=discord.File(fp=io.BytesIO(message.encode('utf-8')), filename="debug_pocket.txt"), ephemeral=True)
+    else:
+        await interaction.followup.send(message, ephemeral=True)
 
 # --- Events ---
 # log in event
