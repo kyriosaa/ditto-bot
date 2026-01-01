@@ -1,5 +1,3 @@
-# im gonna put everything in one file because its easier for me to dev on one device and just copy everything into my raspberry pi thats hosting the bot
-
 import discord
 import io
 import os
@@ -7,8 +5,9 @@ import re
 import aiohttp
 import asyncio
 import logging
-import sqlite3
 import cloudscraper
+import database
+import xml.etree.ElementTree as ET
 
 from logging.handlers import RotatingFileHandler
 from discord.ext import tasks, commands
@@ -16,14 +15,11 @@ from discord.ext.commands import cooldown, BucketType
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-# Bot config
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-PTCG_URLS = ["https://www.pokebeach.com/"]
-POCKET_URLS = ["https://www.pokemon-zone.com/"]
-DB_FILE = "bot_data.db"
+PTCG_URL = "https://www.pokebeach.com/forums/forum/-/index.rss"
+POCKET_URL = "https://www.pokemon-zone.com/"
 
-# Logging setup
 log_file = "bot_activity.log"
 logger = logging.getLogger("dittologger")
 logger.setLevel(logging.INFO)
@@ -31,281 +27,19 @@ handler = RotatingFileHandler(log_file, maxBytes=100 * 1024 * 1024, backupCount=
 handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
 
-# SQLite setup
-def setup_database():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    
-    # Posted articles
-    cursor.execute('''CREATE TABLE IF NOT EXISTS posted_articles (
-                        link TEXT PRIMARY KEY)''')
+database.setup_database()
 
-    # PTCG channels & roles
-    cursor.execute('''CREATE TABLE IF NOT EXISTS ptcg_channels (
-                        server_id TEXT PRIMARY KEY, 
-                        channel_id TEXT)''')
-
-    cursor.execute('''CREATE TABLE IF NOT EXISTS ptcg_roles (
-                        server_id TEXT PRIMARY KEY, 
-                        role_id TEXT)''')
-    
-    # Pocket channels & roles
-    cursor.execute('''CREATE TABLE IF NOT EXISTS pocket_channels (
-                        server_id TEXT PRIMARY KEY, 
-                        channel_id TEXT)''')
-    
-    cursor.execute('''CREATE TABLE IF NOT EXISTS pocket_roles (
-                        server_id TEXT PRIMARY KEY, 
-                        role_id TEXT)''')
-    
-    # Regex patterns
-    cursor.execute('''CREATE TABLE IF NOT EXISTS regex_patterns (
-                        server_id TEXT PRIMARY KEY,
-                        pattern TEXT)''')
-    
-    # Regex-ignored channels
-    cursor.execute('''CREATE TABLE IF NOT EXISTS regex_ignored_channels (
-                    server_id TEXT,
-                    channel_id TEXT,
-                    PRIMARY KEY (server_id, channel_id))''')
-    
-    conn.commit()
-    conn.close()
-
-    logger.info(f"Database successfully set up!")
-setup_database()
-
-# SQLite functions
-# SQLite - SAVES articles to prevent future repeating articles
-def save_posted_article(link):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT OR IGNORE INTO posted_articles (link) VALUES (?)", (link,))
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to save article: {e}")
-    finally:
-        conn.close()
-
-# SQLite - LOADS previously posted articles to avoid repeats
-def load_posted_articles():
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT link FROM posted_articles")
-        links = {row[0] for row in cursor.fetchall()}
-        return links
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to load articles: {e}")
-        return set()
-    finally:
-        conn.close()
-
-# SQLite - SAVES the posting channel for PTCG articles
-def save_ptcg_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO ptcg_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
-                    (server_id, channel_id))
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to save ptcg channel: {e}")
-    finally:
-        conn.close()
-
-# SQLite - GETS the posting channel for PTCG articles
-def get_ptcg_channel(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT channel_id FROM ptcg_channels WHERE server_id = ?", (server_id,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to get ptcg channel: {e}")
-        return None
-    finally:
-        conn.close()
-
-# SQLite - SAVES the ping role for PTCG articles
-def save_ptcg_role(server_id, role_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO ptcg_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
-                    (server_id, role_id))
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to save ptcg role: {e}")
-    finally:
-        conn.close()
-
-# SQLite - GETS the ping role for PTCG articles
-def get_ptcg_role(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT role_id FROM ptcg_roles WHERE server_id = ?", (server_id,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to get ptcg role: {e}")
-        return None
-    finally:
-        conn.close()
-
-# SQLite - SAVES the posting channel for Pocket articles
-def save_pocket_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO pocket_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", 
-                    (server_id, channel_id))
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to save pocket channel: {e}")
-    finally:
-        conn.close()
-
-# SQLite - GETS the posting channel for Pocket articles
-def get_pocket_channel(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT channel_id FROM pocket_channels WHERE server_id = ?", (server_id,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to get pocket channel: {e}")
-        return None
-    finally:
-        conn.close()
-
-# SQLite - SAVES the ping role for Pocket articles
-def save_pocket_role(server_id, role_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO pocket_roles (server_id, role_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET role_id = excluded.role_id", 
-                    (server_id, role_id))
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to save pocket role: {e}")
-    finally:
-        conn.close()
-
-# SQLite - GETS the ping role for Pocket articles
-def get_pocket_role(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT role_id FROM pocket_roles WHERE server_id = ?", (server_id,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to get pocket role: {e}")
-        return None
-    finally:
-        conn.close()
-
-# SQLite - SAVES regex pattern
-def save_regex_pattern(server_id, pattern):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO regex_patterns (server_id, pattern) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET pattern = excluded.pattern", 
-                    (server_id, pattern))
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to save regex pattern: {e}")
-    finally:
-        conn.close()
-
-# SQLite - GETS regex pattern
-def get_regex_pattern(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT pattern FROM regex_patterns WHERE server_id = ?", (server_id,))
-        row = cursor.fetchone()
-        return row[0] if row else None
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to get regex pattern: {e}")
-        return None
-    finally:
-        conn.close()
-
-# SQLite - REMOVES regex pattern
-def remove_regex_pattern(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM regex_patterns WHERE server_id = ?", (server_id,))
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to remove regex pattern: {e}")
-    finally:
-        conn.close()
-
-# SQLite - SAVES regex ignored channel
-def save_regex_ignored_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR IGNORE INTO regex_ignored_channels (server_id, channel_id) VALUES (?, ?)",
-            (server_id, channel_id),
-        )
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to save regex ignored channel: {e}")
-    finally:
-        conn.close()
-
-# SQLite - REMOVES regex ignored channel
-def remove_regex_ignored_channel(server_id, channel_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "DELETE FROM regex_ignored_channels WHERE server_id = ? AND channel_id = ?",
-            (server_id, channel_id),
-        )
-        conn.commit()
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to remove regex ignored channel: {e}")
-    finally:
-        conn.close()
-
-# SQLite - GETS regex ignored channel
-def get_regex_ignored_channels(server_id):
-    conn = sqlite3.connect(DB_FILE)
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT channel_id FROM regex_ignored_channels WHERE server_id = ?", (server_id,)
-        )
-        ignored = {row[0] for row in cursor.fetchall()}
-        return ignored
-    except sqlite3.Error as e:
-        logger.error(f"Database error while trying to get regex ignored channels: {e}")
-        return set()
-    finally:
-        conn.close()
-
-# Discord setup
+# discord setup
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Fetch PTCG articles
+# fetch PTCG articles
 async def fetch_ptcg_articles(ptcg_url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         'Referer': 'https://www.google.com/'
     }
     try:
@@ -313,32 +47,69 @@ async def fetch_ptcg_articles(ptcg_url):
             async with session.get(ptcg_url, timeout=15) as response:
                 status = response.status
                 if status != 200:
-                    logger.error(f"Error fetching the webpage: {ptcg_url}. Status code: {status}")
+                    logger.error(f"Error fetching the RSS feed: {ptcg_url}. Status code: {status}")
                     return []
                 body = await response.text()
     except aiohttp.ClientError as e:
         logger.error(f"Request error while fetching {ptcg_url}: {e}")
         return []
 
-    soup = BeautifulSoup(body, 'html.parser')
+    try:
+        root = ET.fromstring(body)
+    except ET.ParseError as e:
+        logger.error(f"Error parsing XML from {ptcg_url}: {e}")
+        return []
 
-    articles = soup.find_all('article', class_=lambda value: value and "block" in value)
+    channel = root.find('channel')
+    if channel is None:
+        logger.error(f"No <channel> found in RSS feed {ptcg_url}")
+        return []
+
+    items = channel.findall('item')
     fetched_articles = []
-    for article in articles:
-        title_tag = article.find('h2')
-        link_tag = article.find('a')
-        image_tag = article.find('img') if link_tag else None
-
-        if title_tag and link_tag and image_tag:
-            title = title_tag.text.strip()
-            link = link_tag.get('href')
+    for item in items:
+        title_elem = item.find('title')
+        link_elem = item.find('link')
+        
+        if title_elem is not None and link_elem is not None:
+            title = title_elem.text.strip() if title_elem.text else "No Title"
+            link = link_elem.text.strip() if link_elem.text else ""
+            
             if not link:
                 continue
-            full_link = f"https://www.pokebeach.com{link}" if link.startswith("/") else link
-            image_url = image_tag.get('src') or ""
-            fetched_articles.append((title, full_link, image_url))
+                
+            image_url = ""
+            # Try content:encoded first (namespace: http://purl.org/rss/1.0/modules/content/)
+            content_encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')
+            description = item.find('description')
+            
+            html_content = None
+            if content_encoded is not None and content_encoded.text:
+                html_content = content_encoded.text
+            elif description is not None and description.text:
+                html_content = description.text
+            
+            first_paragraph = ""
+            if html_content:
+                # Parse HTML inside content/description to find image
+                desc_soup = BeautifulSoup(html_content, 'html.parser')
+                img_tag = desc_soup.find('img')
+                if img_tag:
+                    image_url = img_tag.get('src') or ""
+                
+                # Remove blockquotes to avoid quoting the quoted text
+                for blockquote in desc_soup.find_all('blockquote'):
+                    blockquote.decompose()
+                
+                # Extract text
+                text = desc_soup.get_text(separator="\n").strip()
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                if lines:
+                    first_paragraph = lines[0]
+            
+            fetched_articles.append((title, link, image_url, first_paragraph))
 
-    logger.info(f"Fetched {len(fetched_articles)} articles from {ptcg_url}.")
+    logger.info(f"Fetched {len(fetched_articles)} articles from RSS feed.")
     return fetched_articles
 
 async def fetch_ptcg_first_paragraph(ptcg_url):
@@ -378,7 +149,7 @@ async def fetch_ptcg_first_paragraph(ptcg_url):
     logger.warning(f"No <p> tag found in the article {ptcg_url}.")
     return "No content available."
 
-# Fetch POCKET articles
+# fetch POCKET articles
 async def fetch_pocket_articles(pocket_url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
@@ -461,11 +232,18 @@ async def fetch_pocket_first_paragraph(pocket_url):
     logger.warning(f"No <p> tag found in the article {pocket_url}.")
     return "No content available."
 
-# Post articles
+# post articles
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
-    for title, link, image_url in articles:
+    for article in articles:
+        title = article[0]
+        link = article[1]
+        image_url = article[2]
+        pre_fetched_paragraph = article[3] if len(article) > 3 else None
+
         first_paragraph = ""
-        if paragraph_fetcher:
+        if pre_fetched_paragraph:
+            first_paragraph = pre_fetched_paragraph
+        elif paragraph_fetcher:
             try:
                 result = paragraph_fetcher(link)
                 if asyncio.iscoroutine(result):
@@ -487,31 +265,26 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
                     allowed_mentions=discord.AllowedMentions(roles=True)
                 )
             await channel.send(embed=embed)
-            await asyncio.to_thread(save_posted_article, link)
+            await asyncio.to_thread(database.save_posted_article, link)
             logger.info(f"Posted article: {title} - {link}")
         except Exception as e:
             logger.error(f"Failed to send message in channel {channel.id}: {e}")
 
-# Background task
+# background task
 @tasks.loop(hours=1)
 async def check_and_post_articles():
     logger.info("Running hourly check for new articles...")
-    posted_links = await asyncio.to_thread(load_posted_articles)
-
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+    posted_links = await asyncio.to_thread(database.load_posted_articles)
 
     # PTCG
-    cursor.execute("SELECT server_id, channel_id FROM ptcg_channels")
-    ptcg_channels = cursor.fetchall()
+    ptcg_channels = database.get_all_ptcg_channels()
 
     new_ptcg_articles = []
-    for url in PTCG_URLS:
-        all_articles = await fetch_ptcg_articles(url)
-        for article_data in all_articles:
-            if article_data[1] not in posted_links:
-                new_ptcg_articles.append(article_data)
-                posted_links.add(article_data[1])
+    all_articles = await fetch_ptcg_articles(PTCG_URL)
+    for article_data in all_articles:
+        if article_data[1] not in posted_links:
+            new_ptcg_articles.append(article_data)
+            posted_links.add(article_data[1])
 
     if new_ptcg_articles and ptcg_channels:
         for server_id, channel_id in ptcg_channels:
@@ -520,21 +293,19 @@ async def check_and_post_articles():
                 logger.error(f"Channel {channel_id} not found for server {server_id}.")
                 continue
             
-            role_id = get_ptcg_role(server_id)
+            role_id = database.get_ptcg_role(server_id)
             role_mention = f"<@&{role_id}>" if role_id else None
             await post_articles(channel, new_ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
     
     # POCKET
-    cursor.execute("SELECT server_id, channel_id FROM pocket_channels")
-    pocket_channels = cursor.fetchall()
+    pocket_channels = database.get_all_pocket_channels()
 
     new_pocket_articles = []
-    for url in POCKET_URLS:
-        all_articles = await fetch_pocket_articles(url)
-        for article_data in all_articles:
-            if article_data[1] not in posted_links:
-                new_pocket_articles.append(article_data)
-                posted_links.add(article_data[1])
+    all_articles = await fetch_pocket_articles(POCKET_URL)
+    for article_data in all_articles:
+        if article_data[1] not in posted_links:
+            new_pocket_articles.append(article_data)
+            posted_links.add(article_data[1])
 
     if new_pocket_articles and pocket_channels:
         for server_id, channel_id in pocket_channels:
@@ -543,14 +314,13 @@ async def check_and_post_articles():
                 logger.error(f"Pocket channel {channel_id} not found for server {server_id}.")
                 continue
             
-            role_id = get_pocket_role(server_id) 
+            role_id = database.get_pocket_role(server_id) 
             role_mention = f"<@&{role_id}>" if role_id else None
             await post_articles(channel, new_pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_pocket_first_paragraph)
 
-    conn.close()
     logger.info("Finished hourly check.")
 
-# Slash commands
+# slash commands
 # /setptcg
 @bot.tree.command(name="setptcg", description="Set the channel and role for PTCG updates")
 async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
@@ -562,8 +332,8 @@ async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel
         return
 
     server_id = str(interaction.guild_id)
-    save_ptcg_channel(server_id, str(channel.id))
-    save_ptcg_role(server_id, str(role.id))
+    database.save_ptcg_channel(server_id, str(channel.id))
+    database.save_ptcg_role(server_id, str(role.id))
 
     await interaction.response.send_message(
         f"✅ Updates will be posted in {channel.mention} and the role {role.mention} will be pinged."
@@ -578,8 +348,8 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
         return
 
     server_id = str(interaction.guild_id)
-    save_pocket_channel(server_id, str(channel.id))
-    save_pocket_role(server_id, str(role.id))
+    database.save_pocket_channel(server_id, str(channel.id))
+    database.save_pocket_role(server_id, str(role.id))
 
     await interaction.response.send_message(
         f"✅ Pocket updates will be posted in {channel.mention} and ping {role.mention}."
@@ -592,7 +362,7 @@ async def update(interaction: discord.Interaction):
     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
     server_id = str(interaction.guild_id)
-    channel_id = get_ptcg_channel(server_id)
+    channel_id = database.get_ptcg_channel(server_id)
     if not channel_id:
         await interaction.followup.send("No channel set. Use `/setptcg` first.", ephemeral=True)
         return
@@ -601,23 +371,8 @@ async def update(interaction: discord.Interaction):
     if not channel:
         await interaction.followup.send("Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
         return
-
-    ptcg_articles = []
-    posted = load_posted_articles()
-    for url in PTCG_URLS:
-        articles = await fetch_ptcg_articles(url)
-        for a in articles:
-            if a[1] not in posted:
-                ptcg_articles.append(a)
-
-    if ptcg_articles:
-        role_id = get_ptcg_role(server_id)
-        role_mention = f"<@&{role_id}>" if role_id else None
-        await post_articles(channel, ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
-        await interaction.followup.send(f"Posted {len(ptcg_articles)} articles. ✅", ephemeral=True)
-    else:
-        await interaction.followup.send("No new articles found. ✅", ephemeral=True)
-
+    
+    check_and_post_articles.start()
     logger.info(f"/update command run on server {server_id}")
 
 # /trading (manual warning message)
@@ -645,7 +400,7 @@ async def setregex(interaction: discord.Interaction, pattern: str):
         return
 
     server_id = str(interaction.guild_id)
-    save_regex_pattern(server_id, pattern)
+    database.save_regex_pattern(server_id, pattern)
 
     await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`")
 
@@ -659,7 +414,7 @@ async def removeregex(interaction: discord.Interaction):
         return
 
     server_id = str(interaction.guild_id)
-    remove_regex_pattern(server_id)
+    database.remove_regex_pattern(server_id)
 
     await interaction.response.send_message("✅ Regex pattern removed.")
 
@@ -673,7 +428,7 @@ async def addignoredchannel(interaction: discord.Interaction, channel: discord.a
         return
 
     server_id = str(interaction.guild_id)
-    save_regex_ignored_channel(server_id, str(channel.id))
+    database.save_regex_ignored_channel(server_id, str(channel.id))
 
     await interaction.response.send_message(f"✅ Channel {channel.mention} has been added to the ignored list.")
 
@@ -687,7 +442,7 @@ async def removeignoredchannel(interaction: discord.Interaction, channel: discor
         return
 
     server_id = str(interaction.guild_id)
-    remove_regex_ignored_channel(server_id, str(channel.id))
+    database.remove_regex_ignored_channel(server_id, str(channel.id))
 
     await interaction.response.send_message(f"✅ Channel {channel.mention} has been removed from the ignored list.")
 
@@ -701,7 +456,7 @@ async def listignoredchannels(interaction: discord.Interaction):
         return
 
     server_id = str(interaction.guild_id)
-    ignored_channels = get_regex_ignored_channels(server_id)
+    ignored_channels = database.get_regex_ignored_channels(server_id)
 
     if ignored_channels:
         channels = [f"<#{channel_id}>" for channel_id in ignored_channels]
@@ -785,7 +540,7 @@ async def on_message(message):
         return
 
     server_id = str(message.guild.id)
-    ignored_channels = get_regex_ignored_channels(server_id)
+    ignored_channels = database.get_regex_ignored_channels(server_id)
 
     # check if the message's channel or its parent (for forum posts) is ignored
     if str(message.channel.id) in ignored_channels or (
@@ -793,7 +548,7 @@ async def on_message(message):
     ):
         return
 
-    pattern = get_regex_pattern(server_id)
+    pattern = database.get_regex_pattern(server_id)
     if pattern and re.search(pattern, message.content, re.IGNORECASE):
         await message.reply(
             "👋🏽 Hey! It seems like you're looking to trade cards.\n\n"
