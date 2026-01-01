@@ -305,24 +305,24 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
     )
     logger.info(f"/setpocket command run on server {server_id}. | Channel: {channel.id} - Role: {role.id}.")
 
-# /update
-@bot.tree.command(name="update", description="Check for news updates")
-async def update(interaction: discord.Interaction):
-    await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
+# # /update
+# @bot.tree.command(name="update", description="Check for news updates")
+# async def update(interaction: discord.Interaction):
+#     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
 
-    server_id = str(interaction.guild_id)
-    channel_id = database.get_ptcg_channel(server_id)
-    if not channel_id:
-        await interaction.followup.send("No channel set. Use `/setptcg` first.", ephemeral=True)
-        return
+#     server_id = str(interaction.guild_id)
+#     channel_id = database.get_ptcg_channel(server_id)
+#     if not channel_id:
+#         await interaction.followup.send("No channel set. Use `/setptcg` first.", ephemeral=True)
+#         return
 
-    channel = bot.get_channel(int(channel_id))
-    if not channel:
-        await interaction.followup.send("Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
-        return
+#     channel = bot.get_channel(int(channel_id))
+#     if not channel:
+#         await interaction.followup.send("Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
+#         return
     
-    check_and_post_articles.restart()
-    logger.info(f"/update command run on server {server_id}")
+#     check_and_post_articles.restart()
+#     logger.info(f"/update command run on server {server_id}")
 
 # /trading (manual warning message)
 @bot.tree.command(name="trading", description="Manual command to tell users how to access the trading channels")
@@ -439,7 +439,7 @@ async def on_guild_join(guild):
                     "__News Updates__\n"
                     "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
                     "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n"
-                    "**/update** - Check for news updates.\n\n"
+                    # "**/update** - Check for news updates.\n\n"
                     "__Regex__\n"
                     "**/setregex <pattern>** - Set a regex pattern for word checking.\n"
                     "**/removeregex** - Remove the regex pattern.\n"
@@ -462,7 +462,7 @@ async def on_guild_join(guild):
                 "__News Updates__\n"
                 "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
                 "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n"
-                "**/update** - Check for news updates.\n\n"
+                # "**/update** - Check for news updates.\n\n"
                 "__Regex__\n"
                 "**/setregex <pattern>** - Set a regex pattern for word checking.\n"
                 "**/removeregex** - Remove the regex pattern.\n"

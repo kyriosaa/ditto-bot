@@ -18,7 +18,7 @@ Currently being used in a community of over **32,000 members** and actively main
 
 - **/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.
 - **/setpocket <channel> <role>** - Set the channel and role for **Pocket** news updates.
-- **/update** - Run this command anywhere and it will check for any recent articles (normally checks every hour).
+<!-- - **/update** - Run this command anywhere and it will check for any recent articles (normally checks every hour). -->
 
 *Regex*
 
@@ -32,7 +32,7 @@ Currently being used in a community of over **32,000 members** and actively main
 ## Features
 
 - **Automatic Updates -** Checks for updates every hour and automatically posts new articles to a discord channel.
-- **Manual Updates -** Manual update checks using the **/update** command.
+<!-- - **Manual Updates -** Manual update checks using the **/update** command. -->
 - **Channel & Role Settings -** Set a posting channel & role for each news topic.
 - **Regex Word Matching -** Set a regex pattern for automatic checks.
 - **Custom Embed -** Takes the article title, image, and first paragraph to create an embed link that is easy to read and understand.
