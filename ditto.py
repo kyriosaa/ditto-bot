@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-PTCG_URL = "https://www.pokebeach.com/forums/forum/-/index.rss"
+PTCG_URL = "https://www.pokebeach.com/"
 POCKET_URL = "https://www.pokemon-zone.com/"
 
 log_file = "bot_activity.log"
@@ -39,119 +39,93 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def fetch_ptcg_articles(ptcg_url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Referer': 'https://www.google.com/'
     }
+
+    def _sync_get(url):
+        sc = cloudscraper.create_scraper()
+        r = sc.get(url, headers=headers, timeout=15)
+        return r.status_code, r.text
+
     try:
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(ptcg_url, timeout=15) as response:
-                status = response.status
-                if status != 200:
-                    logger.error(f"Error fetching the RSS feed: {ptcg_url}. Status code: {status}")
-                    return []
-                body = await response.text()
-    except aiohttp.ClientError as e:
+        status, body = await asyncio.to_thread(_sync_get, ptcg_url)
+        if status != 200:
+            logger.error(f"Error fetching the webpage: {ptcg_url}. Status code: {status}")
+            return []
+    except Exception as e:
         logger.error(f"Request error while fetching {ptcg_url}: {e}")
         return []
 
-    try:
-        root = ET.fromstring(body)
-    except ET.ParseError as e:
-        logger.error(f"Error parsing XML from {ptcg_url}: {e}")
-        return []
+    soup = BeautifulSoup(body, 'html.parser')
 
-    channel = root.find('channel')
-    if channel is None:
-        logger.error(f"No <channel> found in RSS feed {ptcg_url}")
-        return []
-
-    items = channel.findall('item')
+    articles = soup.find_all('article')
     fetched_articles = []
-    for item in items:
-        title_elem = item.find('title')
-        link_elem = item.find('link')
-        
-        if title_elem is not None and link_elem is not None:
-            title = title_elem.text.strip() if title_elem.text else "No Title"
-            link = link_elem.text.strip() if link_elem.text else ""
-            
+    for article in articles:
+        title_tag = article.find('h2')
+        link_tag = article.find('a')
+        image_tag = article.find('img')
+
+        if title_tag and link_tag:
+            title = title_tag.text.strip()
+            link = link_tag.get('href')
             if not link:
                 continue
-                
+            
             image_url = ""
-            content_encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')
-            description = item.find('description')
+            if image_tag:
+                image_url = image_tag.get('src') or ""
             
-            html_content = None
-            if content_encoded is not None and content_encoded.text:
-                html_content = content_encoded.text
-            elif description is not None and description.text:
-                html_content = description.text
-            
-            first_paragraph = ""
-            if html_content:
-                # find image
-                desc_soup = BeautifulSoup(html_content, 'html.parser')
-                img_tag = desc_soup.find('img')
-                if img_tag:
-                    image_url = img_tag.get('src') or ""
-                
-                # remove tje "click to expand..." links from blockquotes
-                for expand_link in desc_soup.find_all(class_='bbCodeBlock-expandLink'):
-                    expand_link.decompose()
+            fetched_articles.append((title, link, image_url))
 
-                # remove read more links
-                for a in desc_soup.find_all('a'):
-                    if "read more" in a.get_text(strip=True).lower():
-                        a.decompose()
-                
-                # extract text
-                text = desc_soup.get_text(separator="\n").strip()
-                lines = [line.strip() for line in text.split('\n') if line.strip()]
-                if lines:
-                    first_paragraph = lines[0]
-                    first_paragraph = re.sub(r'\s*Read more\.?$', '', first_paragraph, flags=re.IGNORECASE)
-            
-            fetched_articles.append((title, link, image_url, first_paragraph))
-
-    logger.info(f"Fetched {len(fetched_articles)} articles from RSS feed.")
+    logger.info(f"Fetched {len(fetched_articles)} articles from {ptcg_url}.")
     return fetched_articles
 
-async def fetch_ptcg_first_paragraph(ptcg_url):
+async def fetch_first_paragraph(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Referer': 'https://www.google.com/'
     }
+
+    def _sync_get(url):
+        sc = cloudscraper.create_scraper()
+        r = sc.get(url, headers=headers, timeout=15)
+        return r.status_code, r.text
+
     try:
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(ptcg_url, timeout=15) as response:
-                status = response.status
-                if status != 200:
-                    logger.error(f"Error fetching the webpage: {ptcg_url}. Status code: {status}")
-                    return ""
-                body = await response.text()
-    except aiohttp.ClientError as e:
-        logger.error(f"Request error while fetching {ptcg_url}: {e}")
+        status, body = await asyncio.to_thread(_sync_get, url)
+        if status != 200:
+            logger.error(f"Error fetching the webpage: {url}. Status code: {status}")
+            return ""
+    except Exception as e:
+        logger.error(f"Request error while fetching {url}: {e}")
         return ""
     
     soup = BeautifulSoup(body, 'html.parser')
-    article_body = soup.find('article')
-    if not article_body:
-        logger.warning(f"No <article> tag found in the article {ptcg_url}.")
-        return "No content available."
-
-    nested_div = article_body.find('div')
-    if nested_div:
-        nested_div = nested_div.find('div') 
-        if nested_div:
-            nested_div = nested_div.find('div')  
-            if nested_div:
-                first_paragraph = nested_div.find('p')  
-                if first_paragraph:
-                    return first_paragraph.text.strip()
     
-    logger.warning(f"No <p> tag found in the article {ptcg_url}.")
+    # 1 // look for <p> inside <article>
+    article_body = soup.find('article')
+    if article_body:
+        p = article_body.find('p')
+        if p and p.text.strip():
+            return p.text.strip()
+
+    # 2 // look for <p> inside common content divs
+    for class_name in ['media-block__primary', 'entry-content', 'post-content', 'content']:
+        content_div = soup.find('div', class_=class_name)
+        if content_div:
+            p = content_div.find('p')
+            if p and p.text.strip():
+                return p.text.strip()
+
+    # 3 // find the first substantial paragraph in the body
+    for p in soup.find_all('p'):
+        text = p.text.strip()
+        if len(text) > 50: 
+            return text
+    
+    logger.warning(f"No suitable <p> tag found in the article {url}.")
     return "No content available."
 
 # fetch POCKET articles
@@ -201,56 +175,6 @@ async def fetch_pocket_articles(pocket_url):
 
     logger.info(f"Fetched {len(fetched_articles)} articles from {pocket_url}.")
     return fetched_articles
-
-async def fetch_pocket_first_paragraph(pocket_url):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Referer': 'https://www.google.com/'
-    }
-
-    def _sync_get(url):
-        sc = cloudscraper.create_scraper()
-        r = sc.get(url, headers=headers, timeout=15)
-        return r.status_code, r.text
-
-    try:
-        status, body = await asyncio.to_thread(_sync_get, pocket_url)
-        logger.info(f"fetch_pocket_first_paragraph: GET {pocket_url} -> {status} (len={len(body) if body else 0})")
-        if status != 200:
-            logger.error(f"Error fetching the article {pocket_url}. Status code: {status}")
-            return ""
-    except Exception as e:
-        logger.error(f"Request error while fetching {pocket_url} via cloudscraper: {e}")
-        return ""
-
-    soup = BeautifulSoup(body, 'html.parser')
-    
-    # look for <p> inside <article> first
-    article_body = soup.find('article')
-    if article_body:
-        p = article_body.find('p')
-        if p and p.text.strip():
-            return p.text.strip()
-
-    # then look for <p> inside common content divs
-    # media-block__primary and stuff
-    for class_name in ['media-block__primary', 'entry-content', 'content', 'post-content']:
-        content_div = soup.find('div', class_=class_name)
-        if content_div:
-            p = content_div.find('p')
-            if p and p.text.strip():
-                return p.text.strip()
-
-    # then find the first substantial paragraph in the body
-    # skip very short paragraphs bcs they might be UI elements
-    for p in soup.find_all('p'):
-        text = p.text.strip()
-        if len(text) > 50: 
-            return text
-    
-    logger.warning(f"No suitable <p> tag found in the article {pocket_url}.")
-    return " " # js return a blank
 
 # post articles
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
@@ -320,7 +244,7 @@ async def check_and_post_articles():
             
             role_id = database.get_ptcg_role(server_id)
             role_mention = f"<@&{role_id}>" if role_id else None
-            await post_articles(channel, new_ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_ptcg_first_paragraph)
+            await post_articles(channel, new_ptcg_articles, role_mention=role_mention, paragraph_fetcher=fetch_first_paragraph)
     
     # POCKET
     pocket_channels = database.get_all_pocket_channels()
@@ -341,7 +265,7 @@ async def check_and_post_articles():
             
             role_id = database.get_pocket_role(server_id) 
             role_mention = f"<@&{role_id}>" if role_id else None
-            await post_articles(channel, new_pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_pocket_first_paragraph)
+            await post_articles(channel, new_pocket_articles, role_mention=role_mention, paragraph_fetcher=fetch_first_paragraph)
 
     logger.info("Finished hourly check.")
 
