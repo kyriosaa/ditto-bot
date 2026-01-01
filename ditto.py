@@ -275,7 +275,7 @@ async def check_and_post_articles():
 async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
     if not interaction.user.guild_permissions.manage_channels or not interaction.user.guild_permissions.manage_roles:
         await interaction.response.send_message(
-            "You need both `Manage Channels` and `Manage Roles` permissions to use this command.", 
+            "[ERROR] You need both `Manage Channels` and `Manage Roles` permissions to use this command.", 
             ephemeral=True
         )
         return
@@ -285,7 +285,7 @@ async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel
     database.save_ptcg_role(server_id, str(role.id))
 
     await interaction.response.send_message(
-        f"✅ Updates will be posted in {channel.mention} and the role {role.mention} will be pinged."
+        f"[SUCCESS] Updates will be posted in {channel.mention} and the role {role.mention} will be pinged."
     )
     logger.info(f"/setptcg command run on server {server_id}. Channel: {channel.id} | Role: {role.id}.")
 
@@ -293,7 +293,7 @@ async def setptcg(interaction: discord.Interaction, channel: discord.TextChannel
 @bot.tree.command(name="setpocket", description="Set the channel and role for Pokémon Pocket updates")
 async def setpocket(interaction: discord.Interaction, channel: discord.TextChannel, role: discord.Role):
     if not interaction.user.guild_permissions.manage_channels or not interaction.user.guild_permissions.manage_roles:
-        await interaction.response.send_message("You need `Manage Channels` and `Manage Roles` permissions.", ephemeral=True)
+        await interaction.response.send_message("[ERROR] You need `Manage Channels` and `Manage Roles` permissions.", ephemeral=True)
         return
 
     server_id = str(interaction.guild_id)
@@ -301,24 +301,24 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
     database.save_pocket_role(server_id, str(role.id))
 
     await interaction.response.send_message(
-        f"✅ Pocket updates will be posted in {channel.mention} and ping {role.mention}."
+        f"[SUCCESS] Pocket updates will be posted in {channel.mention} and ping {role.mention}."
     )
     logger.info(f"/setpocket command run on server {server_id}. | Channel: {channel.id} - Role: {role.id}.")
 
 # # /update
 # @bot.tree.command(name="update", description="Check for news updates")
 # async def update(interaction: discord.Interaction):
-#     await interaction.response.send_message("Checking for new articles... ⏳", ephemeral=True)
+#     await interaction.response.send_message("[STATUS] Checking for new articles...", ephemeral=True)
 
 #     server_id = str(interaction.guild_id)
 #     channel_id = database.get_ptcg_channel(server_id)
 #     if not channel_id:
-#         await interaction.followup.send("No channel set. Use `/setptcg` first.", ephemeral=True)
+#         await interaction.followup.send("[ERROR] No channel set. Use `/setptcg` first.", ephemeral=True)
 #         return
 
 #     channel = bot.get_channel(int(channel_id))
 #     if not channel:
-#         await interaction.followup.send("Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
+#         await interaction.followup.send("[ERROR] Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
 #         return
     
 #     check_and_post_articles.restart()
@@ -330,7 +330,7 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
 async def trading(interaction: discord.Interaction):
     server_id = str(interaction.guild_id)
     await interaction.response.send_message(
-        "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade. 🏛️"
+        "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade."
     )
 
     logger.info(f"/trading command run on server {server_id}.")
@@ -339,19 +339,19 @@ async def trading(interaction: discord.Interaction):
 @bot.tree.command(name="setregex", description="Set a regex pattern for word checking")
 async def setregex(interaction: discord.Interaction, pattern: str):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        await interaction.response.send_message("[ERROR] You must be an administrator to use this command.", ephemeral=True)
         return
     
     try:
         re.compile(pattern) # validate regex pattern
     except re.error:
-        await interaction.response.send_message("Invalid regex pattern.", ephemeral=True)
+        await interaction.response.send_message("[ERROR] Invalid regex pattern.", ephemeral=True)
         return
 
     server_id = str(interaction.guild_id)
     database.save_regex_pattern(server_id, pattern)
 
-    await interaction.response.send_message(f"✅ Regex pattern set to: `{pattern}`")
+    await interaction.response.send_message(f"[SUCCESS] Regex pattern set to: `{pattern}`")
 
     logger.info(f"/setregex command run on server {server_id}. | Pattern: {pattern}.")
 
@@ -359,13 +359,13 @@ async def setregex(interaction: discord.Interaction, pattern: str):
 @bot.tree.command(name="removeregex", description="Remove the regex pattern for word checking")
 async def removeregex(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        await interaction.response.send_message("[ERROR] You must be an administrator to use this command.", ephemeral=True)
         return
 
     server_id = str(interaction.guild_id)
     database.remove_regex_pattern(server_id)
 
-    await interaction.response.send_message("✅ Regex pattern removed.")
+    await interaction.response.send_message("[SUCCESS] Regex pattern removed.")
 
     logger.info(f"/removeregex command run on server {server_id}.")
 
@@ -373,13 +373,13 @@ async def removeregex(interaction: discord.Interaction):
 @bot.tree.command(name="addignoredchannel", description="Add a channel to be ignored by the regex check")
 async def addignoredchannel(interaction: discord.Interaction, channel: discord.abc.GuildChannel):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        await interaction.response.send_message("[ERROR] You must be an administrator to use this command.", ephemeral=True)
         return
 
     server_id = str(interaction.guild_id)
     database.save_regex_ignored_channel(server_id, str(channel.id))
 
-    await interaction.response.send_message(f"✅ Channel {channel.mention} has been added to the ignored list.")
+    await interaction.response.send_message(f"[SUCCESS] Channel {channel.mention} has been added to the ignored list.")
 
     logger.info(f"/addignoredchannel command run on server {server_id}. | Channel: {channel.mention}.")
 
@@ -387,13 +387,13 @@ async def addignoredchannel(interaction: discord.Interaction, channel: discord.a
 @bot.tree.command(name="removeignoredchannel", description="Remove a channel to be ignored by the regex check")
 async def removeignoredchannel(interaction: discord.Interaction, channel: discord.abc.GuildChannel):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        await interaction.response.send_message("[ERROR] You must be an administrator to use this command.", ephemeral=True)
         return
 
     server_id = str(interaction.guild_id)
     database.remove_regex_ignored_channel(server_id, str(channel.id))
 
-    await interaction.response.send_message(f"✅ Channel {channel.mention} has been removed from the ignored list.")
+    await interaction.response.send_message(f"[SUCCESS] Channel {channel.mention} has been removed from the ignored list.")
 
     logger.info(f"/removeignoredchannel command run on server {server_id}. | Channel: {channel.mention}.")
 
@@ -401,7 +401,7 @@ async def removeignoredchannel(interaction: discord.Interaction, channel: discor
 @bot.tree.command(name="listignoredchannels", description="Lists all channels ignored by the regex check")
 async def listignoredchannels(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("You must be an administrator to use this command.", ephemeral=True)
+        await interaction.response.send_message("[ERROR] You must be an administrator to use this command.", ephemeral=True)
         return
 
     server_id = str(interaction.guild_id)
@@ -410,7 +410,7 @@ async def listignoredchannels(interaction: discord.Interaction):
     if ignored_channels:
         channels = [f"<#{channel_id}>" for channel_id in ignored_channels]
         await interaction.response.send_message(
-            "✅ Ignored channels:\n" + "\n".join(channels)
+            "Ignored channels:\n" + "\n".join(channels)
         )
     else:
         await interaction.response.send_message("No channels are currently ignored.", ephemeral=True)
@@ -500,9 +500,9 @@ async def on_message(message):
     pattern = database.get_regex_pattern(server_id)
     if pattern and re.search(pattern, message.content, re.IGNORECASE):
         await message.reply(
-            "👋🏽 Hey! It seems like you're looking to trade cards.\n\n"
-            "We already have a specific channel for trading in PTCG Pocket so please read the post titled **READ ME** at the top of <#1334205216320655483> for more information. 🏛️\n"
-            "If you're unable to make a listing, please grab the *Union Room* role at <#908131369085968394>!"
+            "Hey! It seems like you're looking to trade cards.\n\n"
+            "We already have a specific channel for trading in PTCG Pocket so please read the post titled **READ ME** at the top of <#1334205216320655483> for more information.\n"
+            "If you're unable to make a listing, please grab the **Union Room** role at <#908131369085968394>!"
         )
         logger.info(f"Regex match triggered at server {server_id}.")
 
