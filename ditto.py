@@ -97,15 +97,21 @@ async def fetch_ptcg_articles(ptcg_url):
                 if img_tag:
                     image_url = img_tag.get('src') or ""
                 
-                # Remove blockquotes to avoid quoting the quoted text
-                for blockquote in desc_soup.find_all('blockquote'):
-                    blockquote.decompose()
+                # Remove "Click to expand..." links from blockquotes
+                for expand_link in desc_soup.find_all(class_='bbCodeBlock-expandLink'):
+                    expand_link.decompose()
+
+                # Remove "Read more" links
+                for a in desc_soup.find_all('a'):
+                    if "read more" in a.get_text(strip=True).lower():
+                        a.decompose()
                 
                 # Extract text
                 text = desc_soup.get_text(separator="\n").strip()
                 lines = [line.strip() for line in text.split('\n') if line.strip()]
                 if lines:
                     first_paragraph = lines[0]
+                    first_paragraph = re.sub(r'\s*Read more\.?$', '', first_paragraph, flags=re.IGNORECASE)
             
             fetched_articles.append((title, link, image_url, first_paragraph))
 
@@ -220,16 +226,31 @@ async def fetch_pocket_first_paragraph(pocket_url):
         return ""
 
     soup = BeautifulSoup(body, 'html.parser')
-    article_body = soup.find('article')
-    if not article_body:
-        logger.warning(f"No <article> tag found in the article {pocket_url}.")
-        return "" # no content
-
-    first_paragraph = article_body.find('p')  
-    if first_paragraph:
-        return first_paragraph.text.strip()
     
-    logger.warning(f"No <p> tag found in the article {pocket_url}.")
+    # Strategy 1: Look for <p> inside <article>
+    article_body = soup.find('article')
+    if article_body:
+        p = article_body.find('p')
+        if p and p.text.strip():
+            return p.text.strip()
+
+    # Strategy 2: Look for <p> inside common content divs
+    # 'media-block__primary' was observed in some articles
+    for class_name in ['media-block__primary', 'entry-content', 'content', 'post-content']:
+        content_div = soup.find('div', class_=class_name)
+        if content_div:
+            p = content_div.find('p')
+            if p and p.text.strip():
+                return p.text.strip()
+
+    # Strategy 3: Find the first substantial paragraph in the body
+    # We skip very short paragraphs as they might be UI elements
+    for p in soup.find_all('p'):
+        text = p.text.strip()
+        if len(text) > 50: 
+            return text
+    
+    logger.warning(f"No suitable <p> tag found in the article {pocket_url}.")
     return "No content available."
 
 # post articles
@@ -253,6 +274,11 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
             except Exception as e:
                 logger.error(f"Error fetching paragraph for {link}: {e}")
                 first_paragraph = ""
+
+        # Try to get the full size image if it's a WordPress resized image
+        if image_url:
+            # Pattern to match -123x456.jpg/png etc at the end of the filename
+            image_url = re.sub(r'-\d+x\d+(\.[a-zA-Z]+)$', r'\1', image_url)
 
         description = f"{first_paragraph}\n\nRead more at {link}"
         embed = discord.Embed(title=title, url=link, description=description)
