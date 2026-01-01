@@ -321,7 +321,7 @@ async def update(interaction: discord.Interaction):
         await interaction.followup.send("Invalid channel. Reset it with `/setptcg`.", ephemeral=True)
         return
     
-    check_and_post_articles.start()
+    check_and_post_articles.restart()
     logger.info(f"/update command run on server {server_id}")
 
 # /trading (manual warning message)
