@@ -5,3 +5,5 @@ bot_activity.log
 bot_data.db
 ditto_pfp.png
 ditto_banner.png
+dittoenv
+__pycache__

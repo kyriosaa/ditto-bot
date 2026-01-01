@@ -79,7 +79,6 @@ async def fetch_ptcg_articles(ptcg_url):
                 continue
                 
             image_url = ""
-            # Try content:encoded first (namespace: http://purl.org/rss/1.0/modules/content/)
             content_encoded = item.find('{http://purl.org/rss/1.0/modules/content/}encoded')
             description = item.find('description')
             
@@ -91,22 +90,22 @@ async def fetch_ptcg_articles(ptcg_url):
             
             first_paragraph = ""
             if html_content:
-                # Parse HTML inside content/description to find image
+                # find image
                 desc_soup = BeautifulSoup(html_content, 'html.parser')
                 img_tag = desc_soup.find('img')
                 if img_tag:
                     image_url = img_tag.get('src') or ""
                 
-                # Remove "Click to expand..." links from blockquotes
+                # remove tje "click to expand..." links from blockquotes
                 for expand_link in desc_soup.find_all(class_='bbCodeBlock-expandLink'):
                     expand_link.decompose()
 
-                # Remove "Read more" links
+                # remove read more links
                 for a in desc_soup.find_all('a'):
                     if "read more" in a.get_text(strip=True).lower():
                         a.decompose()
                 
-                # Extract text
+                # extract text
                 text = desc_soup.get_text(separator="\n").strip()
                 lines = [line.strip() for line in text.split('\n') if line.strip()]
                 if lines:
@@ -227,15 +226,15 @@ async def fetch_pocket_first_paragraph(pocket_url):
 
     soup = BeautifulSoup(body, 'html.parser')
     
-    # Strategy 1: Look for <p> inside <article>
+    # look for <p> inside <article> first
     article_body = soup.find('article')
     if article_body:
         p = article_body.find('p')
         if p and p.text.strip():
             return p.text.strip()
 
-    # Strategy 2: Look for <p> inside common content divs
-    # 'media-block__primary' was observed in some articles
+    # then look for <p> inside common content divs
+    # media-block__primary and stuff
     for class_name in ['media-block__primary', 'entry-content', 'content', 'post-content']:
         content_div = soup.find('div', class_=class_name)
         if content_div:
@@ -243,15 +242,15 @@ async def fetch_pocket_first_paragraph(pocket_url):
             if p and p.text.strip():
                 return p.text.strip()
 
-    # Strategy 3: Find the first substantial paragraph in the body
-    # We skip very short paragraphs as they might be UI elements
+    # then find the first substantial paragraph in the body
+    # skip very short paragraphs bcs they might be UI elements
     for p in soup.find_all('p'):
         text = p.text.strip()
         if len(text) > 50: 
             return text
     
     logger.warning(f"No suitable <p> tag found in the article {pocket_url}.")
-    return "No content available."
+    return " " # js return a blank
 
 # post articles
 async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=None):
@@ -275,9 +274,9 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
                 logger.error(f"Error fetching paragraph for {link}: {e}")
                 first_paragraph = ""
 
-        # Try to get the full size image if it's a WordPress resized image
+        # try to get the full size image
         if image_url:
-            # Pattern to match -123x456.jpg/png etc at the end of the filename
+            # pattern to match -123x456.jpg/png etc at the end of the filename
             image_url = re.sub(r'-\d+x\d+(\.[a-zA-Z]+)$', r'\1', image_url)
 
         description = f"{first_paragraph}\n\nRead more at {link}"
@@ -494,7 +493,7 @@ async def listignoredchannels(interaction: discord.Interaction):
 
     logger.info(f"/listignoredchannels command run on server {server_id}.")
 
-# Events
+# EVENTS
 # log in event
 @bot.event
 async def on_ready():
