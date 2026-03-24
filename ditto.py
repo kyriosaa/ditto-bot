@@ -213,7 +213,13 @@ async def post_articles(channel, articles, role_mention=None, paragraph_fetcher=
                     content=role_mention,
                     allowed_mentions=discord.AllowedMentions(roles=True)
                 )
-            await channel.send(embed=embed)
+
+            msg = await channel.send(embed=embed)
+            try:
+                await msg.publish()
+            except discord.HTTPException:
+                pass  # ignore if not an announcement channel or already published
+
             await asyncio.to_thread(database.save_posted_article, link)
             logger.info(f"Posted article: {title} - {link}")
         except Exception as e:
