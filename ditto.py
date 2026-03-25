@@ -33,6 +33,7 @@ database.setup_database()
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
+intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # fetch PTCG articles
@@ -104,14 +105,14 @@ async def fetch_first_paragraph(url):
     
     soup = BeautifulSoup(body, 'html.parser')
     
-    # 1 // look for <p> inside <article>
+    # look for <p> inside <article>
     article_body = soup.find('article')
     if article_body:
         p = article_body.find('p')
         if p and p.text.strip():
             return p.text.strip()
 
-    # 2 // look for <p> inside common content divs
+    # look for <p> inside common content divs
     for class_name in ['media-block__primary', 'entry-content', 'post-content', 'content']:
         content_div = soup.find('div', class_=class_name)
         if content_div:
@@ -119,14 +120,16 @@ async def fetch_first_paragraph(url):
             if p and p.text.strip():
                 return p.text.strip()
 
-    # 3 // find the first substantial paragraph in the body
+    # find the first substantial paragraph in the body
     for p in soup.find_all('p'):
         text = p.text.strip()
         if len(text) > 50: 
             return text
     
     logger.warning(f"No suitable <p> tag found in the article {url}.")
-    return "No content available."
+    return "No content available."  
+    # pocket is usually annoying bcs their website doensn't consistently put the paragraph
+    # where it's supposed to go and so sometimes its just posted without the paragraph
 
 # fetch POCKET articles
 async def fetch_pocket_articles(pocket_url):
@@ -157,11 +160,11 @@ async def fetch_pocket_articles(pocket_url):
 
     soup = BeautifulSoup(body, 'html.parser')
 
-    articles = soup.find_all('article', class_='featured-article-preview')
+    articles = soup.find_all('article', class_='feat_article_preview')
     fetched_articles = []
     for article in articles:
-        title_tag = article.find('h2', class_='featured-article-preview__title')
-        link_tag = article.find('a', class_='featured-article-preview__poster')
+        title_tag = article.find('h2', class_='feat_article_preview__title')
+        link_tag = article.find('a', class_='feat_article_preview__poster')
         image_tag = link_tag.find('img') if link_tag else None
 
         if title_tag and link_tag and image_tag:
@@ -330,15 +333,32 @@ async def setpocket(interaction: discord.Interaction, channel: discord.TextChann
 #     check_and_post_articles.restart()
 #     logger.info(f"/update command run on server {server_id}")
 
-# /trading (manual warning message)
+# /settrading
+@bot.tree.command(name="settrading", description="Set the trading channel for the /trading command")
+async def settrading(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not interaction.user.guild_permissions.manage_channels:
+        await interaction.response.send_message("[ERROR] You must have 'Manage Channels' permission to use this command.", ephemeral=True)
+        return
+
+    server_id = str(interaction.guild_id)
+    database.save_trading_channel(server_id, str(channel.id))
+
+    await interaction.response.send_message(f"[SUCCESS] Trading channel set to {channel.mention}.")
+    logger.info(f"/settrading command run on server {server_id}. | Channel: {channel.id}.")
+
+# /trading (manual warning msg)
 @bot.tree.command(name="trading", description="Manual command to tell users how to access the trading channels")
-@cooldown(1, 60, BucketType.user)   # 1 use per 60 seconds
+@cooldown(1, 60, BucketType.user)
 async def trading(interaction: discord.Interaction):
     server_id = str(interaction.guild_id)
-    await interaction.response.send_message(
-        "Please read the post titled **READ ME** at the top of <#1334205216320655483> for more information on how to trade."
-    )
+    trading_channel_id = database.get_trading_channel(server_id)
+    
+    if trading_channel_id:
+        msg = f"Please read the post titled **READ ME** at the top of <#{trading_channel_id}> for more information on how to trade."
+    else:
+        msg = "The trading channel has not been set for this server. Please ask an admin to use `/settrading`."
 
+    await interaction.response.send_message(msg)
     logger.info(f"/trading command run on server {server_id}.")
 
 # /setregex
@@ -435,46 +455,61 @@ async def on_ready():
 # new server welcome event
 @bot.event
 async def on_guild_join(guild):
+    # try to find who added the bot
+    inviter = None
     try:
-        # read the audit log to find who added the bot
-        async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=1):
+        async for entry in guild.audit_logs(action=discord.AuditLogAction.bot_add, limit=5):
             if entry.target.id == bot.user.id:
                 inviter = entry.user
-                message = (
-                    f"Hey {inviter.name}! Here are some tips to get me set up in your server.\n\n"
-                    "__News Updates__\n"
-                    "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
-                    "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n"
-                    # "**/update** - Check for news updates.\n\n"
-                    "__Regex__\n"
-                    "**/setregex <pattern>** - Set a regex pattern for word checking.\n"
-                    "**/removeregex** - Remove the regex pattern.\n"
-                    "**/addignoredchannel <channel>** - Add a channel to be ignored by the regex check.\n"
-                    "**/removeignoredchannel <channel>** - Remove a channel to be ignored by the regex check.\n"
-                    "**/listignoredchannels** - Lists all channels ignored by the regex check.\n"
-                    "**/trading** - Manual command to tell users how to access the trading channels.\n\n"
-                    "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
-                )
-                await inviter.send(message)
-                logger.info(f"Bot added to new server of ID {guild.id} by {inviter.name}")
-                logger.info(f"Sent welcome message to {inviter.name} who added the bot to {guild.name}.")
-                return
-        
-        # if audit log check fails just send the msg to the owner
-        owner = guild.owner
-        if owner:
+                break
+    except Exception:
+        # if logic fails (sth like missing permissions), just ignore and fallback to owner
+        pass
+
+    try:
+        if inviter:
             message = (
-                f"Hey {owner.name}! Here are some tips to get me set up in your server.\n\n"
+                f"Hey {inviter.name}! Here are some tips to get me set up in your server.\n\n"
                 "__News Updates__\n"
                 "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
                 "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n"
-                # "**/update** - Check for news updates.\n\n"
                 "__Regex__\n"
                 "**/setregex <pattern>** - Set a regex pattern for word checking.\n"
                 "**/removeregex** - Remove the regex pattern.\n"
                 "**/addignoredchannel <channel>** - Add a channel to be ignored by the regex check.\n"
                 "**/removeignoredchannel <channel>** - Remove a channel to be ignored by the regex check.\n"
                 "**/listignoredchannels** - Lists all channels ignored by the regex check.\n"
+                "**/settrading <channel>** - Set the trading channel for the /trading command.\n"
+                "**/trading** - Manual command to tell users how to access the trading channels.\n\n"
+                "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
+            )
+            await inviter.send(message)
+            logger.info(f"Bot added to new server of ID {guild.id} by {inviter.name}")
+            logger.info(f"Sent welcome message to {inviter.name} who added the bot to {guild.name}.")
+            return
+        
+        # if audit log check fails just send the msg to the owner
+        if guild.owner_id:
+            try:
+                owner = await bot.fetch_user(guild.owner_id)
+            except discord.NotFound:
+                owner = None
+        else:
+            owner = guild.owner
+
+        if owner:
+            message = (
+                f"Hey {owner.name}! Here are some tips to get me set up in your server.\n\n"
+                "__News Updates__\n"
+                "**/setptcg <channel> <role>** - Set the channel and role for **PTCG** news updates.\n"
+                "**/setpocket <channel> <role>** - Set the channel and role for **PTCG Pocket** news updates.\n"
+                "__Regex__\n"
+                "**/setregex <pattern>** - Set a regex pattern for word checking.\n"
+                "**/removeregex** - Remove the regex pattern.\n"
+                "**/addignoredchannel <channel>** - Add a channel to be ignored by the regex check.\n"
+                "**/removeignoredchannel <channel>** - Remove a channel to be ignored by the regex check.\n"
+                "**/listignoredchannels** - Lists all channels ignored by the regex check.\n"
+                "**/settrading <channel>** - Set the trading channel for the /trading command.\n"
                 "**/trading** - Manual command to tell users how to access the trading channels.\n\n"
                 "If you need help, please create a ticket in the Pokémon TCG/Live/Pocket Community."
             )
@@ -505,12 +540,16 @@ async def on_message(message):
 
     pattern = database.get_regex_pattern(server_id)
     if pattern and re.search(pattern, message.content, re.IGNORECASE):
-        await message.reply(
-            "Hey! It seems like you're looking to trade cards.\n\n"
-            "We already have a specific channel for trading in PTCG Pocket so please read the post titled **READ ME** at the top of <#1334205216320655483> for more information.\n"
-            "If you're unable to make a listing, please grab the **Union Room** role at <#908131369085968394>!"
-        )
-        logger.info(f"Regex match triggered at server {server_id}.")
+        trading_channel_id = database.get_trading_channel(server_id)
+        if trading_channel_id:
+            msg = (
+                "Hey! It seems like you're looking to trade cards.\n\n"
+                f"We already have a specific channel for trading in PTCG Pocket so please read the post titled **READ ME** at the top of <#{trading_channel_id}> for more information."
+            )
+            await message.reply(msg)
+            logger.info(f"Regex match triggered at server {server_id} pointing to channel {trading_channel_id}.")
+        else:
+             logger.info(f"Regex match triggered at server {server_id} but no trading channel set.")
 
     await bot.process_commands(message)
 

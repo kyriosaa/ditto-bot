@@ -40,6 +40,11 @@ def setup_database():
                     server_id TEXT,
                     channel_id TEXT,
                     PRIMARY KEY (server_id, channel_id))''')
+
+    # trading channels
+    cursor.execute('''CREATE TABLE IF NOT EXISTS trading_channels (
+                        server_id TEXT PRIMARY KEY,
+                        channel_id TEXT)''')
     
     conn.commit()
     conn.close()
@@ -287,5 +292,31 @@ def get_regex_ignored_channels(server_id):
     except sqlite3.Error as e:
         logger.error(f"Database error while trying to get regex ignored channels: {e}")
         return set()
+    finally:
+        conn.close()
+
+# SAVES the trading channel
+def save_trading_channel(server_id, channel_id):
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO trading_channels (server_id, channel_id) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET channel_id = excluded.channel_id", (server_id, channel_id))
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to save trading channel: {e}")
+    finally:
+        conn.close()
+
+# GETS the trading channel
+def get_trading_channel(server_id):
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT channel_id FROM trading_channels WHERE server_id = ?", (server_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+    except sqlite3.Error as e:
+        logger.error(f"Database error while trying to get trading channel: {e}")
+        return None
     finally:
         conn.close()
