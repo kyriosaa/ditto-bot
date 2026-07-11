@@ -6,7 +6,7 @@
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.com/)
 [![discord.py](https://img.shields.io/badge/discord.py-7289DA?style=flat&logo=discord&logoColor=white)](https://discordpy.readthedocs.io/)
 
-A custom Discord bot built with Python using ```discord.py```. Features include automated moderation, user interaction commands, and integration with external APIs. Designed to be modular, scalable, and easy to extend for custom server needs.
+A custom Discord bot built with Python using ```discord.py```. Features include automated moderation, user interaction commands, and integration with external APIs.
 
 Currently being used in a community of over **32,000 members** and actively maintained.
 
